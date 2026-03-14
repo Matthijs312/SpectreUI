@@ -549,6 +549,17 @@ local function addModeSelector(text, options, defaultIndex, parent, callback)
     return { getSelected = function() return selected end, setSelected = function(_,idx) updateSelection(idx) end }
 end
 
+-- Shared slider input: one global listener instead of one per slider
+local activeSliders = {}
+
+UserInput.InputChanged:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
+        for _, s in ipairs(activeSliders) do
+            if s.sliding then s.upd(i.Position.X) end
+        end
+    end
+end)
+
 local function addSlider(text, min, max, default, parent, callback, formatFn)
     local value = default
     local fmtFn = formatFn or function(v) return string.format("%.0f%%", v*100) end
@@ -591,8 +602,8 @@ local function addSlider(text, min, max, default, parent, callback, formatFn)
     da.Size = UDim2.new(1,0,0,28); da.Position = UDim2.new(0,0,0,22)
     da.BackgroundTransparency = 1; da.Text = ""; da.ZIndex = 5; da.Parent = row
 
-    local sliding = false
-    local function upd(inputX)
+    local entry = {sliding = false}
+    function entry.upd(inputX)
         local ap, as = tf.AbsolutePosition.X, tf.AbsoluteSize.X
         if as < 1 then return end
         local rel = math.clamp((inputX-ap)/as, 0, 1)
@@ -601,9 +612,10 @@ local function addSlider(text, min, max, default, parent, callback, formatFn)
         valLbl.Text = fmtFn(value)
         if callback then callback(value) end
     end
-    da.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=true; upd(i.Position.X) end end)
-    da.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=false end end)
-    UserInput.InputChanged:Connect(function(i) if sliding and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then upd(i.Position.X) end end)
+    table.insert(activeSliders, entry)
+
+    da.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then entry.sliding=true; entry.upd(i.Position.X) end end)
+    da.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then entry.sliding=false end end)
 end
 
 -- ────────────────────────────────────────────────
@@ -803,6 +815,10 @@ Players.PlayerRemoving:Connect(function(p)
     origHeadSizes[tostring(p.UserId)]   = nil
     origHeadCollide[tostring(p.UserId)] = nil
     appliedTo[tostring(p.UserId)]       = nil
+    if playerConnections[p] then
+        for _, conn in ipairs(playerConnections[p]) do conn:Disconnect() end
+        playerConnections[p] = nil
+    end
 end)
 
 -- ────────────────────────────────────────────────
@@ -865,7 +881,10 @@ local function findNearestPlayer()
     end
     if not best then return nil end
     local m = best.Character
-    return {model=m, getTarget=function() return m:FindFirstChild("Head") or m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart end}
+    return {model=m, getTarget=function()
+        if not m or not m.Parent then return nil end
+        return m:FindFirstChild("Head") or m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
+    end}
 end
 
 UserInput.InputBegan:Connect(function(input, gp)
@@ -902,14 +921,17 @@ end)
 -- Player hooks
 -- ────────────────────────────────────────────────
 
+local playerConnections = {} -- [Player] = {connection, ...}
+
 local function hookPlayer(plr)
     if plr == LocalPlayer then return end
-    plr.CharacterAdded:Connect(function()
+    local conn = plr.CharacterAdded:Connect(function()
         origHeadSizes[tostring(plr.UserId)]   = nil
         origHeadCollide[tostring(plr.UserId)] = nil
         appliedTo[tostring(plr.UserId)]       = nil
         if ESP.Enabled then task.wait(0.15); createHighlight(plr) end
     end)
+    playerConnections[plr] = {conn}
 end
 Players.PlayerAdded:Connect(hookPlayer)
 for _, p in Players:GetPlayers() do hookPlayer(p) end
