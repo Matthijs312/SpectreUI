@@ -165,9 +165,9 @@ Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 5)
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0,30,0,30); closeBtn.Position = UDim2.new(1,-42,0,6)
-closeBtn.BackgroundTransparency = 1; closeBtn.Text = "✕"
+closeBtn.BackgroundTransparency = 1; closeBtn.Text = "X"
 closeBtn.TextColor3 = theme.textMuted; closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14; closeBtn.Parent = titleBar
+closeBtn.TextSize = 16; closeBtn.Parent = titleBar
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 
 closeBtn.MouseEnter:Connect(function()
