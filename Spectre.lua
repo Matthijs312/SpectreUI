@@ -111,6 +111,31 @@ toggleBtn.MouseLeave:Connect(function()
     TweenService:Create(toggleStroke, TWEEN_FAST, {Color = theme.border}):Play()
 end)
 
+-- Status indicator dots (ESP, Aim, Hitbox)
+local indicatorNames = {"E", "A", "H"}
+local indicators = {}
+for i = 1, 3 do
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 8, 0, 8)
+    dot.Position = UDim2.new(0, 4 + (i - 1) * 13, 1, 4)
+    dot.BackgroundColor3 = theme.toggleOff
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 11
+    dot.Parent = toggleBtn
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    indicators[i] = dot
+end
+
+local function updateIndicators()
+    local states = {ESP.Enabled, ESP.CursorLockEnabled, ESP.HitboxExpanderEnabled}
+    for i, dot in ipairs(indicators) do
+        local on = states[i]
+        TweenService:Create(dot, TWEEN_FAST, {
+            BackgroundColor3 = on and theme.toggleOn or theme.toggleOff
+        }):Play()
+    end
+end
+
 -- Draggable toggle button
 local tbDragging, tbDragStart, tbStartPos, tbDidDrag = false, nil, nil, false
 local TB_DRAG_THRESHOLD = 5
@@ -927,7 +952,10 @@ local espTab = createTab("ESP", "[]")
 addSectionHeader("Enable", espTab)
 
 local espToggle = addToggle("ESP Highlights", espTab)
-espToggle:onChanged(function(on) if on then enableESP() else disableESP() end end)
+espToggle:onChanged(function(on)
+    if on then enableESP() else disableESP() end
+    updateIndicators()
+end)
 
 addSpacer(2, espTab)
 addSectionHeader("Info Display", espTab)
@@ -960,6 +988,7 @@ aimToggle:onChanged(function(on)
     ESP.CursorLockEnabled = on
     if not on then ESP.CursorLockedTarget = nil end
     updateFOVCircle()
+    updateIndicators()
 end)
 
 addSpacer(2, aimTab)
@@ -1006,6 +1035,7 @@ local hbToggle = addToggle("Enable Head Expander", hitboxTab)
 hbToggle:onChanged(function(on)
     ESP.HitboxExpanderEnabled = on
     if on then expandAllHeads() else restoreAllHeads() end
+    updateIndicators()
 end)
 
 addSpacer(2, hitboxTab)
