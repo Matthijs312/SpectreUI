@@ -116,6 +116,9 @@ end)
 -- ────────────────────────────────────────────────
 
 local WINDOW_W, WINDOW_H = 540, 440
+local MIN_WIN_W, MIN_WIN_H = 380, 320
+local MAX_WIN_W, MAX_WIN_H = 800, 600
+local curW, curH = WINDOW_W, WINDOW_H
 
 local main = Instance.new("Frame")
 main.Size             = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
@@ -202,6 +205,64 @@ UserInput.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local d = input.Position - dragStart
         main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y)
+    end
+end)
+
+-- ────────────────────────────────────────────────
+-- Resize handle
+-- ────────────────────────────────────────────────
+
+local resizeHandle = Instance.new("TextButton")
+resizeHandle.Size = UDim2.new(0, 22, 0, 22)
+resizeHandle.Position = UDim2.new(1, -22, 1, -22)
+resizeHandle.BackgroundTransparency = 1
+resizeHandle.Text = ""; resizeHandle.ZIndex = 6; resizeHandle.Parent = main
+
+for i = 0, 2 do
+    local grip = Instance.new("Frame")
+    grip.Size = UDim2.new(0, 12 - i * 4, 0, 1)
+    grip.AnchorPoint = Vector2.new(1, 1)
+    grip.Position = UDim2.new(1, -3, 1, -(4 + i * 4))
+    grip.BackgroundColor3 = theme.textMuted
+    grip.BackgroundTransparency = 0.5
+    grip.BorderSizePixel = 0; grip.ZIndex = 6
+    grip.Parent = resizeHandle
+end
+
+resizeHandle.MouseEnter:Connect(function()
+    for _, c in ipairs(resizeHandle:GetChildren()) do
+        if c:IsA("Frame") then
+            TweenService:Create(c, TWEEN_FAST, {BackgroundTransparency = 0, BackgroundColor3 = theme.accent}):Play()
+        end
+    end
+end)
+resizeHandle.MouseLeave:Connect(function()
+    for _, c in ipairs(resizeHandle:GetChildren()) do
+        if c:IsA("Frame") then
+            TweenService:Create(c, TWEEN_FAST, {BackgroundTransparency = 0.5, BackgroundColor3 = theme.textMuted}):Play()
+        end
+    end
+end)
+
+local resizing, resizeStart, startSize
+resizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = true
+        resizeStart = input.Position
+        startSize = Vector2.new(curW, curH)
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then resizing = false end
+        end)
+    end
+end)
+
+UserInput.InputChanged:Connect(function(input)
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local d = input.Position - resizeStart
+        local newW = math.clamp(startSize.X + d.X, MIN_WIN_W, MAX_WIN_W)
+        local newH = math.clamp(startSize.Y + d.Y, MIN_WIN_H, MAX_WIN_H)
+        curW, curH = newW, newH
+        main.Size = UDim2.new(0, newW, 0, newH)
     end
 end)
 
@@ -508,6 +569,7 @@ local ESP = {
     ShowNames = true, ShowHP = true, ShowDistance = true,
     HitboxExpanderEnabled = false, HitboxMultiplier = 4.0,
     HitboxIgnoreTeam = true,
+    FOVRadius = 200, ShowFOVCircle = false,
 }
 
 local function getTeamColor(p)
@@ -694,6 +756,32 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 -- ────────────────────────────────────────────────
+-- FOV Circle
+-- ────────────────────────────────────────────────
+
+local fovCircle = Instance.new("Frame")
+fovCircle.Size = UDim2.new(0, ESP.FOVRadius * 2, 0, ESP.FOVRadius * 2)
+fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovCircle.BackgroundTransparency = 1
+fovCircle.Visible = false
+fovCircle.ZIndex = 8
+fovCircle.Parent = sg
+
+Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
+
+local fovStroke = Instance.new("UIStroke", fovCircle)
+fovStroke.Color = theme.accent
+fovStroke.Thickness = 1.5
+fovStroke.Transparency = 0.3
+
+local function updateFOVCircle()
+    local diameter = ESP.FOVRadius * 2
+    fovCircle.Size = UDim2.new(0, diameter, 0, diameter)
+    fovCircle.Visible = ESP.ShowFOVCircle and ESP.CursorLockEnabled
+end
+
+-- ────────────────────────────────────────────────
 -- Aim Lock
 -- ────────────────────────────────────────────────
 
@@ -710,7 +798,7 @@ end
 local function findNearestPlayer()
     local vp = Camera.ViewportSize
     local cx, cy = vp.X/2, vp.Y/2
-    local best, bestD = nil, 200
+    local best, bestD = nil, ESP.FOVRadius
     for _, p in Players:GetPlayers() do
         if p ~= LocalPlayer and p.Character then
             if ESP.IgnoreTeam and LocalPlayer.Team and p.Team == LocalPlayer.Team then continue end
@@ -750,6 +838,7 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 RunService.RenderStepped:Connect(function()
+    fovCircle.Visible = ESP.ShowFOVCircle and ESP.CursorLockEnabled
     if not ESP.CursorLockEnabled then ESP.CursorLockedTarget = nil; return end
     if ESP.CursorLockedTarget then
         local m = ESP.CursorLockedTarget.model
@@ -781,7 +870,7 @@ for _, p in Players:GetPlayers() do hookPlayer(p) end
 -- Tab: Home
 -- ────────────────────────────────────────────────
 
-local homeTab = createTab("Home", "◈")
+local homeTab = createTab("Home", ">>")
 addSpacer(8, homeTab)
 
 local lf = Instance.new("Frame")
@@ -811,7 +900,7 @@ addLabel("Right-Click — Aim lock (toggle or hold)", homeTab)
 -- Tab: ESP
 -- ────────────────────────────────────────────────
 
-local espTab = createTab("ESP", "◉")
+local espTab = createTab("ESP", "[]")
 addSectionHeader("Enable", espTab)
 
 local espToggle = addToggle("ESP Highlights", espTab)
@@ -840,11 +929,15 @@ addLabel("Uses team colors automatically", espTab)
 -- Tab: Aim Lock
 -- ────────────────────────────────────────────────
 
-local aimTab = createTab("Aim Lock", "◎")
+local aimTab = createTab("Aim Lock", "+")
 addSectionHeader("Enable", aimTab)
 
 local aimToggle = addToggle("Aim Lock", aimTab)
-aimToggle:onChanged(function(on) ESP.CursorLockEnabled = on; if not on then ESP.CursorLockedTarget = nil end end)
+aimToggle:onChanged(function(on)
+    ESP.CursorLockEnabled = on
+    if not on then ESP.CursorLockedTarget = nil end
+    updateFOVCircle()
+end)
 
 addSpacer(2, aimTab)
 addSectionHeader("Behavior", aimTab)
@@ -858,17 +951,27 @@ local teamToggle = addToggle("Ignore Teammates", aimTab)
 teamToggle:setState(true); teamToggle:onChanged(function(on) ESP.IgnoreTeam = on end)
 
 addSpacer(2, aimTab)
+addSectionHeader("FOV Circle", aimTab)
+
+local fovToggle = addToggle("Show FOV Circle", aimTab)
+fovToggle:onChanged(function(on) ESP.ShowFOVCircle = on; updateFOVCircle() end)
+
+addSlider("FOV Radius", 50, 500, 200, aimTab, function(v)
+    ESP.FOVRadius = v; updateFOVCircle()
+end, function(v) return string.format("%.0fpx", v) end)
+
+addSpacer(2, aimTab)
 addSectionHeader("How It Works", aimTab)
 addLabel("Toggle: right-click to lock, again to release", aimTab)
 addLabel("Hold: hold right-click to aim, release to stop", aimTab)
-addLabel("Locks onto nearest player to crosshair", aimTab)
+addLabel("Locks onto nearest player inside FOV circle", aimTab)
 addLabel("Works through walls at any distance", aimTab)
 
 -- ────────────────────────────────────────────────
 -- Tab: Hitbox
 -- ────────────────────────────────────────────────
 
-local hitboxTab = createTab("Hitbox", "◆")
+local hitboxTab = createTab("Hitbox", "#")
 addSectionHeader("Head Expander", hitboxTab)
 
 local hbToggle = addToggle("Enable Head Expander", hitboxTab)
@@ -903,7 +1006,7 @@ addLabel("Some games may detect this", hitboxTab)
 -- Tab: Settings
 -- ────────────────────────────────────────────────
 
-local settingsTab = createTab("Settings", "⚙")
+local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
 addLabel("SPECTRE ESP v2.1", settingsTab)
 addSpacer(4, settingsTab)
@@ -943,11 +1046,11 @@ local isOpen = false
 local function openMenu()
     if isOpen then return end; isOpen = true; main.Visible = true
     main.BackgroundTransparency = 1
-    main.Size = UDim2.new(0, WINDOW_W*0.95, 0, WINDOW_H*0.95)
-    main.Position = UDim2.new(0.5, -WINDOW_W*0.475, 0.5, -WINDOW_H*0.475)
+    main.Size = UDim2.new(0, curW*0.95, 0, curH*0.95)
+    main.Position = UDim2.new(0.5, -curW*0.475, 0.5, -curH*0.475)
     TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0,WINDOW_W,0,WINDOW_H),
-        Position = UDim2.new(0.5,-WINDOW_W/2,0.5,-WINDOW_H/2),
+        Size = UDim2.new(0,curW,0,curH),
+        Position = UDim2.new(0.5,-curW/2,0.5,-curH/2),
         BackgroundTransparency = 0
     }):Play()
 end
@@ -955,8 +1058,8 @@ end
 local function closeMenu()
     if not isOpen then return end; isOpen = false
     TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, WINDOW_W*0.95, 0, WINDOW_H*0.95),
-        Position = UDim2.new(0.5, -WINDOW_W*0.475, 0.5, -WINDOW_H*0.475),
+        Size = UDim2.new(0, curW*0.95, 0, curH*0.95),
+        Position = UDim2.new(0.5, -curW*0.475, 0.5, -curH*0.475),
         BackgroundTransparency = 1
     }):Play()
     task.delay(0.25, function() if not isOpen then main.Visible = false end end)
