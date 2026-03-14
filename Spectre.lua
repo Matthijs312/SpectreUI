@@ -570,6 +570,7 @@ local ESP = {
     HitboxExpanderEnabled = false, HitboxMultiplier = 4.0,
     HitboxIgnoreTeam = true,
     FOVRadius = 200, ShowFOVCircle = false,
+    LockSmooth = 0.7,
 }
 
 local function getTeamColor(p)
@@ -785,14 +786,12 @@ end
 -- Aim Lock
 -- ────────────────────────────────────────────────
 
-local LOCK_SMOOTH = 0.7
-
 local function trackTarget(part)
     if not part or not part.Parent then return end
     local cf, pos = Camera.CFrame, Camera.CFrame.Position
     local dir = (part.Position - pos)
     if dir.Magnitude < 0.1 then return end
-    Camera.CFrame = cf:Lerp(CFrame.lookAt(pos, part.Position), LOCK_SMOOTH)
+    Camera.CFrame = cf:Lerp(CFrame.lookAt(pos, part.Position), ESP.LockSmooth)
 end
 
 local function findNearestPlayer()
@@ -949,6 +948,11 @@ end)
 
 local teamToggle = addToggle("Ignore Teammates", aimTab)
 teamToggle:setState(true); teamToggle:onChanged(function(on) ESP.IgnoreTeam = on end)
+
+addSlider("Smoothness", 0.05, 1, 0.7, aimTab, function(v)
+    ESP.LockSmooth = v
+end, function(v) return string.format("%.0f%%", v * 100) end)
+addLabel("Low = smooth tracking, High = snappy lock", aimTab)
 
 addSpacer(2, aimTab)
 addSectionHeader("FOV Circle", aimTab)
