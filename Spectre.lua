@@ -111,6 +111,30 @@ toggleBtn.MouseLeave:Connect(function()
     TweenService:Create(toggleStroke, TWEEN_FAST, {Color = theme.border}):Play()
 end)
 
+-- Draggable toggle button
+local tbDragging, tbDragStart, tbStartPos, tbDidDrag = false, nil, nil, false
+local TB_DRAG_THRESHOLD = 5
+
+toggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        tbDragging = true; tbDidDrag = false
+        tbDragStart = input.Position; tbStartPos = toggleBtn.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then tbDragging = false end
+        end)
+    end
+end)
+
+UserInput.InputChanged:Connect(function(input)
+    if tbDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local d = input.Position - tbDragStart
+        if math.abs(d.X) > TB_DRAG_THRESHOLD or math.abs(d.Y) > TB_DRAG_THRESHOLD then
+            tbDidDrag = true
+            toggleBtn.Position = UDim2.new(tbStartPos.X.Scale, tbStartPos.X.Offset + d.X, tbStartPos.Y.Scale, tbStartPos.Y.Offset + d.Y)
+        end
+    end
+end)
+
 -- ────────────────────────────────────────────────
 -- Main window
 -- ────────────────────────────────────────────────
@@ -1069,7 +1093,10 @@ local function closeMenu()
     task.delay(0.25, function() if not isOpen then main.Visible = false end end)
 end
 
-dualConnect(toggleBtn, function() if isOpen then closeMenu() else openMenu() end end)
+dualConnect(toggleBtn, function()
+    if tbDidDrag then return end
+    if isOpen then closeMenu() else openMenu() end
+end)
 dualConnect(closeBtn, closeMenu)
 
 UserInput.InputBegan:Connect(function(input, gp)
