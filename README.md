@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.6
+# SPECTRE ESP v2.7
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 

@@ -3,9 +3,11 @@ local LocalPlayer    = Players.LocalPlayer
 local UserInput      = game:GetService("UserInputService")
 local TweenService   = game:GetService("TweenService")
 local RunService     = game:GetService("RunService")
+local GuiService     = game:GetService("GuiService")
 
 local Mouse  = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
+local guiInset = GuiService:GetGuiInset()
 
 local sg = Instance.new("ScreenGui")
 sg.Name              = "SpectreESP"
@@ -163,6 +165,7 @@ local function saveConfig()
         ShowFOVCircle = ESP.ShowFOVCircle,
         -- Hitbox
         HitboxMultiplier = ESP.HitboxMultiplier,
+        HitboxTransparency = ESP.HitboxTransparency,
         HitboxIgnoreTeam = ESP.HitboxIgnoreTeam,
         InfiniteJumpEnabled = ESP.InfiniteJumpEnabled,
         -- Keybinds
@@ -195,6 +198,7 @@ local function loadConfig()
     if data.ShowFOVCircle ~= nil then ESP.ShowFOVCircle = data.ShowFOVCircle end
     -- Hitbox
     if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
+    if data.HitboxTransparency ~= nil then ESP.HitboxTransparency = data.HitboxTransparency end
     if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
     if data.InfiniteJumpEnabled ~= nil then ESP.InfiniteJumpEnabled = data.InfiniteJumpEnabled end
     -- Keybinds
@@ -400,7 +404,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v2.6"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.7"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -843,6 +847,16 @@ local function addSlider(text, min, max, default, parent, callback, formatFn)
 
     da.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then entry.sliding=true; entry.upd(i.Position.X) end end)
     da.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then entry.sliding=false end end)
+
+    return {
+        setValue = function(_, v)
+            value = math.clamp(v, min, max)
+            local rel = (value - min) / (max - min)
+            fill.Size = UDim2.new(rel, 0, 1, 0)
+            sk.Position = UDim2.new(rel, 0, 0.5, 0)
+            valLbl.Text = fmtFn(value)
+        end,
+    }
 end
 
 -- ────────────────────────────────────────────────
@@ -856,7 +870,7 @@ local ESP = {
     FillTransparency = 0.38, OutlineTransparency = 0.15,
     ShowNames = true, ShowHP = true, ShowDistance = true,
     HitboxExpanderEnabled = false, HitboxMultiplier = 4.0,
-    HitboxIgnoreTeam = true,
+    HitboxTransparency = 0.6, HitboxIgnoreTeam = true,
     FOVRadius = 200, ShowFOVCircle = false,
     LockSmooth = 0.7,
     InfiniteJumpEnabled = false,
@@ -983,10 +997,11 @@ local function expandHead(player)
         origHeadSizes[key]   = head.Size
         origHeadCollide[key] = head.CanCollide
     end
-    head.Size       = origHeadSizes[key] * ESP.HitboxMultiplier
-    head.CanCollide = false
-    head.Massless   = true
-    appliedTo[key]  = true
+    head.Size         = origHeadSizes[key] * ESP.HitboxMultiplier
+    head.Transparency = ESP.HitboxTransparency
+    head.CanCollide   = false
+    head.Massless     = true
+    appliedTo[key]    = true
 end
 
 local function restoreHead(player)
@@ -994,9 +1009,10 @@ local function restoreHead(player)
     if origHeadSizes[key] and player.Character then
         local head = player.Character:FindFirstChild("Head")
         if head and head:IsA("BasePart") then
-            head.Size       = origHeadSizes[key]
-            head.CanCollide = origHeadCollide[key] or true
-            head.Massless   = false
+            head.Size         = origHeadSizes[key]
+            head.Transparency = 0
+            head.CanCollide   = origHeadCollide[key] or true
+            head.Massless     = false
         end
     end
     origHeadSizes[key]   = nil
@@ -1046,6 +1062,15 @@ Players.PlayerRemoving:Connect(function(p)
     if playerConnections[p] then
         for _, conn in ipairs(playerConnections[p]) do conn:Disconnect() end
         playerConnections[p] = nil
+    end
+    if ESP.objects[p] then
+        pcall(function() ESP.objects[p].highlight:Destroy() end)
+        pcall(function() ESP.objects[p].billboard:Destroy() end)
+        ESP.objects[p] = nil
+    end
+    if ESP.CursorLockedTarget and ESP.CursorLockedTarget.model and p.Character
+        and ESP.CursorLockedTarget.model == p.Character then
+        ESP.CursorLockedTarget = nil
     end
 end)
 
@@ -1142,6 +1167,8 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 RunService.RenderStepped:Connect(function()
+    local vp = Camera.ViewportSize
+    fovCircle.Position = UDim2.new(0, vp.X / 2, 0, vp.Y / 2 - guiInset.Y)
     fovCircle.Visible = ESP.ShowFOVCircle and ESP.CursorLockEnabled
     if not ESP.CursorLockEnabled then ESP.CursorLockedTarget = nil; return end
     if ESP.CursorLockedTarget then
@@ -1216,7 +1243,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.6"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.7"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1256,8 +1283,8 @@ distToggle:setState(true); distToggle:onChanged(function(on) ESP.ShowDistance = 
 
 addSpacer(2, espTab)
 addSectionHeader("Appearance", espTab)
-addSlider("Fill Opacity", 0, 1, 0.38, espTab, function(v) ESP.FillTransparency = v end)
-addSlider("Outline Opacity", 0, 1, 0.15, espTab, function(v) ESP.OutlineTransparency = v end)
+local fillSlider = addSlider("Fill Opacity", 0, 1, 0.38, espTab, function(v) ESP.FillTransparency = v end)
+local outlineSlider = addSlider("Outline Opacity", 0, 1, 0.15, espTab, function(v) ESP.OutlineTransparency = v end)
 addSpacer(2, espTab)
 addLabel("Uses team colors automatically", espTab)
 
@@ -1280,7 +1307,7 @@ end)
 addSpacer(2, aimTab)
 addSectionHeader("Behavior", aimTab)
 
-addModeSelector("Lock Mode", {"Toggle", "Hold"}, 1, aimTab, function(idx)
+local aimModeSelector = addModeSelector("Lock Mode", {"Toggle", "Hold"}, 1, aimTab, function(idx)
     ESP.HoldToAim = (idx == 2)
     if ESP.HoldToAim then ESP.CursorLockedTarget = nil end
 end)
@@ -1288,7 +1315,7 @@ end)
 local teamToggle = addToggle("Ignore Teammates", aimTab)
 teamToggle:setState(true); teamToggle:onChanged(function(on) ESP.IgnoreTeam = on end)
 
-addSlider("Smoothness", 0.05, 1, 0.7, aimTab, function(v)
+local smoothSlider = addSlider("Smoothness", 0.05, 1, 0.7, aimTab, function(v)
     ESP.LockSmooth = v
 end, function(v) return string.format("%.0f%%", v * 100) end)
 addLabel("Low = smooth tracking, High = snappy lock", aimTab)
@@ -1299,7 +1326,7 @@ addSectionHeader("FOV Circle", aimTab)
 local fovToggle = addToggle("Show FOV Circle", aimTab)
 fovToggle:onChanged(function(on) ESP.ShowFOVCircle = on; updateFOVCircle() end)
 
-addSlider("FOV Radius", 50, 500, 200, aimTab, function(v)
+local fovSlider = addSlider("FOV Radius", 50, 500, 200, aimTab, function(v)
     ESP.FOVRadius = v; updateFOVCircle()
 end, function(v) return string.format("%.0fpx", v) end)
 
@@ -1328,10 +1355,15 @@ end)
 addSpacer(2, hitboxTab)
 addSectionHeader("Settings", hitboxTab)
 
-addSlider("Size Multiplier", 1, 12, 4, hitboxTab, function(v)
+local multiplierSlider = addSlider("Size Multiplier", 1, 12, 4, hitboxTab, function(v)
     ESP.HitboxMultiplier = v
     if ESP.HitboxExpanderEnabled then restoreAllHeads(); task.wait(); expandAllHeads() end
 end, function(v) return string.format("%.1fx", v) end)
+
+local transparencySlider = addSlider("Hitbox Transparency", 0, 1, 0.6, hitboxTab, function(v)
+    ESP.HitboxTransparency = v
+    if ESP.HitboxExpanderEnabled then restoreAllHeads(); task.wait(); expandAllHeads() end
+end, function(v) return string.format("%.0f%%", v * 100) end)
 
 local hbTeamToggle = addToggle("Skip Teammates", hitboxTab)
 hbTeamToggle:setState(true)
@@ -1365,7 +1397,7 @@ addLabel("Press jump while mid-air to jump again", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.6", settingsTab)
+addLabel("SPECTRE ESP v2.7", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1404,6 +1436,13 @@ local function addKeybindButton(text, bindName, parent)
         keyBtn.TextColor3 = theme.red
 
         task.defer(function() listenConn = UserInput.InputBegan:Connect(function(input, gp)
+            if input.KeyCode == Enum.KeyCode.Escape then
+                listening = false
+                keyBtn.Text = getKeyName(Keybinds[bindName])
+                keyBtn.TextColor3 = theme.accent
+                if listenConn then listenConn:Disconnect(); listenConn = nil end
+                return
+            end
             if input.UserInputType == Enum.UserInputType.Keyboard then
                 Keybinds[bindName] = input.KeyCode
                 keyBtn.Text = getKeyName(input.KeyCode)
@@ -1430,8 +1469,29 @@ local function addKeybindButton(text, bindName, parent)
     return keyBtn
 end
 
-addKeybindButton("Toggle Menu", "ToggleMenu", settingsTab)
-addKeybindButton("Aim Lock", "AimLock", settingsTab)
+local toggleMenuKeyBtn = addKeybindButton("Toggle Menu", "ToggleMenu", settingsTab)
+local aimLockKeyBtn = addKeybindButton("Aim Lock", "AimLock", settingsTab)
+
+local function syncUI()
+    nameToggle:setState(ESP.ShowNames)
+    hpToggle:setState(ESP.ShowHP)
+    distToggle:setState(ESP.ShowDistance)
+    teamToggle:setState(ESP.IgnoreTeam)
+    fovToggle:setState(ESP.ShowFOVCircle)
+    hbTeamToggle:setState(ESP.HitboxIgnoreTeam)
+    infJumpToggle:setState(ESP.InfiniteJumpEnabled)
+    fillSlider:setValue(ESP.FillTransparency)
+    outlineSlider:setValue(ESP.OutlineTransparency)
+    smoothSlider:setValue(ESP.LockSmooth)
+    fovSlider:setValue(ESP.FOVRadius)
+    multiplierSlider:setValue(ESP.HitboxMultiplier)
+    transparencySlider:setValue(ESP.HitboxTransparency)
+    aimModeSelector:setSelected(ESP.HoldToAim and 2 or 1)
+    toggleMenuKeyBtn.Text = getKeyName(Keybinds.ToggleMenu)
+    aimLockKeyBtn.Text = getKeyName(Keybinds.AimLock)
+    updateFOVCircle()
+    updateIndicators()
+end
 
 addSpacer(4, settingsTab)
 addSectionHeader("Config", settingsTab)
@@ -1478,7 +1538,8 @@ loadBtn.AutoButtonColor = false; loadBtn.Parent = loadRow
 
 dualConnect(loadBtn, function()
     if loadConfig() then
-        notify("Config loaded — reopen menu to see changes", theme.toggleOn)
+        syncUI()
+        notify("Config loaded", theme.toggleOn)
     else
         notify("No saved config found", theme.red)
     end
@@ -1509,12 +1570,12 @@ dualConnect(resetBtn, function()
     ESP.ShowNames = true; ESP.ShowHP = true; ESP.ShowDistance = true
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
-    ESP.HitboxMultiplier = 4.0; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
+    ESP.HitboxMultiplier = 4.0; ESP.HitboxTransparency = 0.6; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
     -- Reset keybinds
     Keybinds.ToggleMenu = Enum.KeyCode.Insert
     Keybinds.AimLock = Enum.UserInputType.MouseButton2
-    -- Update FOV circle
-    updateFOVCircle()
+    -- Sync UI to match reset state
+    syncUI()
     -- Save defaults
     if filesystemSupported then saveConfig() end
     notify("All settings reset to defaults", theme.accent)
@@ -1549,6 +1610,9 @@ if #allTabs > 0 then
         end)
     end)
 end
+
+-- Sync UI with config loaded at startup
+if configLoaded then syncUI() end
 
 -- ────────────────────────────────────────────────
 -- Open / Close
@@ -1618,12 +1682,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.6 loaded")
+print("SPECTRE ESP v2.7 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.6 loaded", theme.accent)
+    notify("SPECTRE v2.7 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)

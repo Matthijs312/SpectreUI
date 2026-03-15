@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.7
+
+### Added
+- Hitbox transparency slider — adjust how see-through expanded heads are (0%–100%)
+
+### Fixed
+- Aim lock could not be toggled off — right-click was blocked by game camera's `gameProcessedEvent`
+- Toggle buttons could permanently lock if their callback errored (debounce never reset)
+- Keybind rebind button could accidentally capture its own click as the new keybind
+- ESP highlights and billboards leaked when players left the game
+- Aim lock stayed locked to a player who left mid-game
+- FOV circle was offset ~18px from the actual aim lock center due to GUI inset
+- Pressing Escape during keybind rebinding no longer sets the keybind to Escape (now cancels)
+
+### Improved
+- Load Config now instantly updates all toggles, sliders, and keybind labels in the UI
+- Reset to Defaults now syncs all UI controls to match the reset state
+- Startup config auto-load syncs UI so toggles reflect saved settings immediately
+
 ## v2.6
 
 ### Added
