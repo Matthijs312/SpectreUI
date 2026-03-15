@@ -1391,28 +1391,6 @@ local fovSlider = addSlider("FOV Radius", 50, 500, 200, aimTab, function(v)
 end, function(v) return string.format("%.0fpx", v) end)
 
 addSpacer(2, aimTab)
-addSectionHeader("Crosshair", aimTab)
-
-local crossToggle = addToggle("Show Crosshair", aimTab)
-crossToggle:onChanged(function(on)
-    ESP.CrosshairEnabled = on
-    updateCrosshair()
-    notify(on and "Crosshair Enabled" or "Crosshair Disabled", on and theme.toggleOn or theme.red)
-end)
-
-local crossSizeSlider = addSlider("Size", 4, 30, 12, aimTab, function(v)
-    ESP.CrosshairSize = v; updateCrosshair()
-end, function(v) return string.format("%.0fpx", v) end)
-
-local crossGapSlider = addSlider("Gap", 0, 20, 4, aimTab, function(v)
-    ESP.CrosshairGap = v; updateCrosshair()
-end, function(v) return string.format("%.0fpx", v) end)
-
-local crossThickSlider = addSlider("Thickness", 1, 6, 2, aimTab, function(v)
-    ESP.CrosshairThickness = v; updateCrosshair()
-end, function(v) return string.format("%.0fpx", v) end)
-
-addSpacer(2, aimTab)
 addSectionHeader("How It Works", aimTab)
 addLabel("Toggle: right-click to lock, again to release", aimTab)
 addLabel("Hold: hold right-click to aim, release to stop", aimTab)
@@ -1472,6 +1450,41 @@ infJumpToggle:onChanged(function(on)
 end)
 
 addLabel("Press jump while mid-air to jump again", hitboxTab)
+
+-- ────────────────────────────────────────────────
+-- Tab: Crosshair
+-- ────────────────────────────────────────────────
+
+local crossTab = createTab("Crosshair", "x")
+addSectionHeader("Enable", crossTab)
+
+local crossToggle = addToggle("Show Crosshair", crossTab)
+crossToggle:onChanged(function(on)
+    ESP.CrosshairEnabled = on
+    updateCrosshair()
+    notify(on and "Crosshair Enabled" or "Crosshair Disabled", on and theme.toggleOn or theme.red)
+end)
+
+addSpacer(2, crossTab)
+addSectionHeader("Customize", crossTab)
+
+local crossSizeSlider = addSlider("Size", 4, 30, 12, crossTab, function(v)
+    ESP.CrosshairSize = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+local crossGapSlider = addSlider("Gap", 0, 20, 4, crossTab, function(v)
+    ESP.CrosshairGap = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+local crossThickSlider = addSlider("Thickness", 1, 6, 2, crossTab, function(v)
+    ESP.CrosshairThickness = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+addSpacer(2, crossTab)
+addSectionHeader("Info", crossTab)
+addLabel("Crosshair is drawn at screen center", crossTab)
+addLabel("Stays visible even when menu is closed", crossTab)
+addLabel("Settings are saved with your config", crossTab)
 
 -- ────────────────────────────────────────────────
 -- Tab: Settings
