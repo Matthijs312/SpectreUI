@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.8
+# SPECTRE ESP v2.9
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -14,8 +14,13 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - Toggle or hold-to-aim modes
 - Adjustable smoothness (5%–100%)
 - FOV circle overlay with adjustable radius (50–500px)
-- Custom crosshair overlay with adjustable size, gap, and thickness
 - Teammate ignore option
+
+### Crosshair
+- Custom crosshair overlay drawn at screen center
+- Adjustable size, gap, and thickness
+- Center dot toggle
+- 5 color presets: White, Red, Green, Cyan, Accent
 
 ### Head Expander
 - Expands enemy head hitboxes (1x–12x multiplier)
@@ -35,7 +40,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 ## UI
 
 - **Dark theme** — custom design system with accent colors, smooth tweens, and rounded corners
-- **Tabbed sidebar** — Home, ESP, Aim Lock, Hitbox, Settings
+- **Tabbed sidebar** — Home, ESP, Aim Lock, Hitbox, Crosshair, Settings
 - **Draggable window** — grab the title bar to reposition
 - **Resizable window** — drag the bottom-right grip handle (min 380x320, max 800x600)
 - **Minimize button** — collapse to title bar only, click again to restore

@@ -1,10 +1,19 @@
 # Changelog
 
+## v2.9
+
+### Added
+- Crosshair color selector — 5 presets: White, Red, Green, Cyan, Accent
+- Center dot toggle — small circular dot at crosshair center
+- Dedicated Crosshair tab (moved out of Aim Lock tab)
+
+---
+
 ## v2.8
 
 ### Added
 - Crosshair overlay — custom crosshair drawn at screen center with adjustable size, gap, and thickness
-- Crosshair toggle, size, gap, and thickness sliders in the Aim Lock tab
+- Crosshair toggle, size, gap, and thickness sliders
 - Crosshair settings saved/loaded with config
 
 ---

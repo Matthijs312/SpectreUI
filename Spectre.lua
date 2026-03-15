@@ -168,6 +168,8 @@ local function saveConfig()
         CrosshairSize = ESP.CrosshairSize,
         CrosshairGap = ESP.CrosshairGap,
         CrosshairThickness = ESP.CrosshairThickness,
+        CrosshairDot = ESP.CrosshairDot,
+        CrosshairColorIndex = ESP.CrosshairColorIndex,
         -- Hitbox
         HitboxMultiplier = ESP.HitboxMultiplier,
         HitboxTransparency = ESP.HitboxTransparency,
@@ -206,6 +208,8 @@ local function loadConfig()
     if data.CrosshairSize ~= nil then ESP.CrosshairSize = data.CrosshairSize end
     if data.CrosshairGap ~= nil then ESP.CrosshairGap = data.CrosshairGap end
     if data.CrosshairThickness ~= nil then ESP.CrosshairThickness = data.CrosshairThickness end
+    if data.CrosshairDot ~= nil then ESP.CrosshairDot = data.CrosshairDot end
+    if data.CrosshairColorIndex ~= nil then ESP.CrosshairColorIndex = data.CrosshairColorIndex end
     -- Hitbox
     if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
     if data.HitboxTransparency ~= nil then ESP.HitboxTransparency = data.HitboxTransparency end
@@ -414,7 +418,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v2.8"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.9"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -885,7 +889,8 @@ local ESP = {
     LockSmooth = 0.7,
     InfiniteJumpEnabled = false,
     CrosshairEnabled = false, CrosshairSize = 12, CrosshairThickness = 2,
-    CrosshairColor = theme.accent, CrosshairGap = 4,
+    CrosshairColor = theme.accent, CrosshairGap = 4, CrosshairDot = false,
+    CrosshairColorIndex = 5,
 }
 
 local function getTeamColor(p)
@@ -1116,6 +1121,14 @@ end
 -- Crosshair Overlay
 -- ────────────────────────────────────────────────
 
+local crosshairColors = {
+    {name = "White",  color = Color3.fromRGB(255, 255, 255)},
+    {name = "Red",    color = Color3.fromRGB(255, 60, 60)},
+    {name = "Green",  color = Color3.fromRGB(60, 255, 100)},
+    {name = "Cyan",   color = Color3.fromRGB(60, 220, 255)},
+    {name = "Accent", color = theme.accent},
+}
+
 local crosshairContainer = Instance.new("Frame")
 crosshairContainer.Size = UDim2.new(0, 0, 0, 0)
 crosshairContainer.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1135,10 +1148,21 @@ for i = 1, 4 do
     crossLines[i] = line
 end
 
+local crossDot = Instance.new("Frame")
+crossDot.AnchorPoint = Vector2.new(0.5, 0.5)
+crossDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+crossDot.BackgroundColor3 = ESP.CrosshairColor
+crossDot.BorderSizePixel = 0
+crossDot.ZIndex = 10
+crossDot.Visible = false
+crossDot.Parent = crosshairContainer
+Instance.new("UICorner", crossDot).CornerRadius = UDim.new(1, 0)
+
 local function updateCrosshair()
     local s = ESP.CrosshairSize
     local t = ESP.CrosshairThickness
     local g = ESP.CrosshairGap
+    local c = ESP.CrosshairColor
     -- Top
     crossLines[1].Size = UDim2.new(0, t, 0, s)
     crossLines[1].Position = UDim2.new(0.5, -t/2, 0.5, -(g + s))
@@ -1153,8 +1177,15 @@ local function updateCrosshair()
     crossLines[4].Position = UDim2.new(0.5, g, 0.5, -t/2)
 
     for _, l in ipairs(crossLines) do
-        l.BackgroundColor3 = ESP.CrosshairColor
+        l.BackgroundColor3 = c
     end
+
+    -- Center dot
+    local dotSize = math.max(t + 2, 4)
+    crossDot.Size = UDim2.new(0, dotSize, 0, dotSize)
+    crossDot.BackgroundColor3 = c
+    crossDot.Visible = ESP.CrosshairDot
+
     crosshairContainer.Visible = ESP.CrosshairEnabled
 end
 
@@ -1303,7 +1334,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.8"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.9"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1480,6 +1511,22 @@ local crossThickSlider = addSlider("Thickness", 1, 6, 2, crossTab, function(v)
     ESP.CrosshairThickness = v; updateCrosshair()
 end, function(v) return string.format("%.0fpx", v) end)
 
+local crossDotToggle = addToggle("Center Dot", crossTab)
+crossDotToggle:onChanged(function(on)
+    ESP.CrosshairDot = on; updateCrosshair()
+end)
+
+addSpacer(2, crossTab)
+addSectionHeader("Color", crossTab)
+
+local colorNames = {}
+for _, c in ipairs(crosshairColors) do table.insert(colorNames, c.name) end
+local crossColorSelector = addModeSelector("Color", colorNames, ESP.CrosshairColorIndex, crossTab, function(idx)
+    ESP.CrosshairColorIndex = idx
+    ESP.CrosshairColor = crosshairColors[idx].color
+    updateCrosshair()
+end)
+
 addSpacer(2, crossTab)
 addSectionHeader("Info", crossTab)
 addLabel("Crosshair is drawn at screen center", crossTab)
@@ -1492,7 +1539,7 @@ addLabel("Settings are saved with your config", crossTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.8", settingsTab)
+addLabel("SPECTRE ESP v2.9", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1574,6 +1621,7 @@ local function syncUI()
     teamToggle:setState(ESP.IgnoreTeam)
     fovToggle:setState(ESP.ShowFOVCircle)
     crossToggle:setState(ESP.CrosshairEnabled)
+    crossDotToggle:setState(ESP.CrosshairDot)
     hbTeamToggle:setState(ESP.HitboxIgnoreTeam)
     infJumpToggle:setState(ESP.InfiniteJumpEnabled)
     fillSlider:setValue(ESP.FillTransparency)
@@ -1586,6 +1634,10 @@ local function syncUI()
     multiplierSlider:setValue(ESP.HitboxMultiplier)
     transparencySlider:setValue(ESP.HitboxTransparency)
     aimModeSelector:setSelected(ESP.HoldToAim and 2 or 1)
+    if crosshairColors[ESP.CrosshairColorIndex] then
+        ESP.CrosshairColor = crosshairColors[ESP.CrosshairColorIndex].color
+    end
+    crossColorSelector:setSelected(ESP.CrosshairColorIndex)
     toggleMenuKeyBtn.Text = getKeyName(Keybinds.ToggleMenu)
     aimLockKeyBtn.Text = getKeyName(Keybinds.AimLock)
     updateFOVCircle()
@@ -1672,6 +1724,7 @@ dualConnect(resetBtn, function()
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
     ESP.HitboxMultiplier = 4.0; ESP.HitboxTransparency = 0.6; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
     ESP.CrosshairEnabled = false; ESP.CrosshairSize = 12; ESP.CrosshairGap = 4; ESP.CrosshairThickness = 2
+    ESP.CrosshairDot = false; ESP.CrosshairColorIndex = 5; ESP.CrosshairColor = theme.accent
     -- Reset keybinds
     Keybinds.ToggleMenu = Enum.KeyCode.Insert
     Keybinds.AimLock = Enum.UserInputType.MouseButton2
@@ -1783,12 +1836,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.8 loaded")
+print("SPECTRE ESP v2.9 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.8 loaded", theme.accent)
+    notify("SPECTRE v2.9 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
