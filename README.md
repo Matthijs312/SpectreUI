@@ -1,4 +1,4 @@
-# SPECTRE ESP v3.0
+# SPECTRE ESP v3.1
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -28,10 +28,9 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - Auto-applies to new players and respawns every 2 seconds
 - Optional teammate skip
 
-### Movement
+### Movement & Visuals
 - **Infinite Jump** — jump mid-air, unlimited times
-
-### Visuals
+- **Noclip** — walk through walls and objects
 - **Fullbright** — removes all darkness, fog, and shadows; restores original lighting when disabled
 
 ### Settings
@@ -43,7 +42,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 ## UI
 
 - **Dark theme** — custom design system with accent colors, smooth tweens, and rounded corners
-- **Tabbed sidebar** — Home, ESP, Aim Lock, Hitbox, Crosshair, Settings
+- **Tabbed sidebar** — Home, ESP, Aim Lock, Hitbox, Movement, Crosshair, Settings
 - **Draggable window** — grab the title bar to reposition
 - **Resizable window** — drag the bottom-right grip handle (min 380x320, max 800x600)
 - **Minimize button** — collapse to title bar only, click again to restore

@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1
+
+### Added
+- Noclip toggle — walk through walls and objects
+- Dedicated Movement tab — moved Infinite Jump, Noclip, and Fullbright out of Hitbox into their own tab
+
+---
+
 ## v3.0
 
 ### Added

@@ -176,6 +176,7 @@ local function saveConfig()
         HitboxIgnoreTeam = ESP.HitboxIgnoreTeam,
         InfiniteJumpEnabled = ESP.InfiniteJumpEnabled,
         FullbrightEnabled = ESP.FullbrightEnabled,
+        NoclipEnabled = ESP.NoclipEnabled,
         -- Keybinds
         ToggleMenuKey = getKeyName(Keybinds.ToggleMenu),
         AimLockKey = getKeyName(Keybinds.AimLock),
@@ -217,6 +218,7 @@ local function loadConfig()
     if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
     if data.InfiniteJumpEnabled ~= nil then ESP.InfiniteJumpEnabled = data.InfiniteJumpEnabled end
     if data.FullbrightEnabled ~= nil then ESP.FullbrightEnabled = data.FullbrightEnabled end
+    if data.NoclipEnabled ~= nil then ESP.NoclipEnabled = data.NoclipEnabled end
     -- Keybinds
     if data.ToggleMenuKey then
         local ok3, key = pcall(function() return Enum.KeyCode[data.ToggleMenuKey] end)
@@ -420,7 +422,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v3.0"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v3.1"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -889,7 +891,7 @@ local ESP = {
     HitboxTransparency = 0.6, HitboxIgnoreTeam = true,
     FOVRadius = 200, ShowFOVCircle = false,
     LockSmooth = 0.7,
-    InfiniteJumpEnabled = false, FullbrightEnabled = false,
+    InfiniteJumpEnabled = false, FullbrightEnabled = false, NoclipEnabled = false,
     CrosshairEnabled = false, CrosshairSize = 12, CrosshairThickness = 2,
     CrosshairColor = theme.accent, CrosshairGap = 4, CrosshairDot = false,
     CrosshairColorIndex = 5,
@@ -1289,6 +1291,21 @@ UserInput.JumpRequest:Connect(function()
 end)
 
 -- ────────────────────────────────────────────────
+-- Noclip
+-- ────────────────────────────────────────────────
+
+RunService.Stepped:Connect(function()
+    if not ESP.NoclipEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end)
+
+-- ────────────────────────────────────────────────
 -- Player hooks
 -- ────────────────────────────────────────────────
 
@@ -1336,7 +1353,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v3.0"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v3.1"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1472,20 +1489,34 @@ addLabel("Body stays completely normal", hitboxTab)
 addLabel("Re-checks every 2 seconds for new players", hitboxTab)
 addLabel("Some games may detect this", hitboxTab)
 
-addSpacer(4, hitboxTab)
-addSectionHeader("Movement", hitboxTab)
+-- ────────────────────────────────────────────────
+-- Tab: Movement
+-- ────────────────────────────────────────────────
 
-local infJumpToggle = addToggle("Infinite Jump", hitboxTab)
+local moveTab = createTab("Movement", "^")
+addSectionHeader("Movement", moveTab)
+
+local infJumpToggle = addToggle("Infinite Jump", moveTab)
 infJumpToggle:onChanged(function(on)
     ESP.InfiniteJumpEnabled = on
     updateIndicators()
     notify(on and "Infinite Jump Enabled" or "Infinite Jump Disabled", on and theme.toggleOn or theme.red)
 end)
 
-addLabel("Press jump while mid-air to jump again", hitboxTab)
+addLabel("Press jump while mid-air to jump again", moveTab)
 
-addSpacer(2, hitboxTab)
-addSectionHeader("Visuals", hitboxTab)
+addSpacer(2, moveTab)
+
+local noclipToggle = addToggle("Noclip", moveTab)
+noclipToggle:onChanged(function(on)
+    ESP.NoclipEnabled = on
+    notify(on and "Noclip Enabled" or "Noclip Disabled", on and theme.toggleOn or theme.red)
+end)
+
+addLabel("Walk through walls and objects", moveTab)
+
+addSpacer(4, moveTab)
+addSectionHeader("Visuals", moveTab)
 
 local Lighting = game:GetService("Lighting")
 local originalLighting = {
@@ -1515,14 +1546,19 @@ local function setFullbright(on)
     end
 end
 
-local fullbrightToggle = addToggle("Fullbright", hitboxTab)
+local fullbrightToggle = addToggle("Fullbright", moveTab)
 fullbrightToggle:onChanged(function(on)
     ESP.FullbrightEnabled = on
     setFullbright(on)
     notify(on and "Fullbright Enabled" or "Fullbright Disabled", on and theme.toggleOn or theme.red)
 end)
 
-addLabel("Removes all darkness and shadows", hitboxTab)
+addLabel("Removes all darkness and shadows", moveTab)
+
+addSpacer(4, moveTab)
+addSectionHeader("Info", moveTab)
+addLabel("Noclip disables collision every frame", moveTab)
+addLabel("Some games may detect these features", moveTab)
 
 -- ────────────────────────────────────────────────
 -- Tab: Crosshair
@@ -1581,7 +1617,7 @@ addLabel("Settings are saved with your config", crossTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v3.0", settingsTab)
+addLabel("SPECTRE ESP v3.1", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1667,6 +1703,7 @@ local function syncUI()
     hbTeamToggle:setState(ESP.HitboxIgnoreTeam)
     infJumpToggle:setState(ESP.InfiniteJumpEnabled)
     fullbrightToggle:setState(ESP.FullbrightEnabled)
+    noclipToggle:setState(ESP.NoclipEnabled)
     setFullbright(ESP.FullbrightEnabled)
     fillSlider:setValue(ESP.FillTransparency)
     outlineSlider:setValue(ESP.OutlineTransparency)
@@ -1767,7 +1804,7 @@ dualConnect(resetBtn, function()
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
     ESP.HitboxMultiplier = 4.0; ESP.HitboxTransparency = 0.6; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
-    ESP.FullbrightEnabled = false
+    ESP.FullbrightEnabled = false; ESP.NoclipEnabled = false
     ESP.CrosshairEnabled = false; ESP.CrosshairSize = 12; ESP.CrosshairGap = 4; ESP.CrosshairThickness = 2
     ESP.CrosshairDot = false; ESP.CrosshairColorIndex = 5; ESP.CrosshairColor = theme.accent
     -- Reset keybinds
@@ -1881,12 +1918,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v3.0 loaded")
+print("SPECTRE ESP v3.1 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v3.0 loaded", theme.accent)
+    notify("SPECTRE v3.1 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
