@@ -1124,8 +1124,7 @@ local function isAimLockInput(input)
     end
 end
 
-UserInput.InputBegan:Connect(function(input, gp)
-    if gp then return end
+UserInput.InputBegan:Connect(function(input, _gp)
     if not ESP.CursorLockEnabled then return end
     if not isAimLockInput(input) then return end
     if ESP.HoldToAim then
@@ -1403,7 +1402,7 @@ local function addKeybindButton(text, bindName, parent)
         keyBtn.Text = "..."
         keyBtn.TextColor3 = theme.red
 
-        listenConn = UserInput.InputBegan:Connect(function(input, gp)
+        task.defer(function() listenConn = UserInput.InputBegan:Connect(function(input, gp)
             if input.UserInputType == Enum.UserInputType.Keyboard then
                 Keybinds[bindName] = input.KeyCode
                 keyBtn.Text = getKeyName(input.KeyCode)
@@ -1424,7 +1423,7 @@ local function addKeybindButton(text, bindName, parent)
             if listenConn then listenConn:Disconnect(); listenConn = nil end
             saveConfig()
             notify(text .. " set to " .. getKeyName(Keybinds[bindName]), theme.accent)
-        end)
+        end) end)
     end)
 
     return keyBtn
