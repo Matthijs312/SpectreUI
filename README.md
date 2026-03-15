@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.9
+# SPECTRE ESP v3.0
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -30,6 +30,9 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 
 ### Movement
 - **Infinite Jump** — jump mid-air, unlimited times
+
+### Visuals
+- **Fullbright** — removes all darkness, fog, and shadows; restores original lighting when disabled
 
 ### Settings
 - **Keybind customization** — rebind toggle menu and aim lock to any key or mouse button

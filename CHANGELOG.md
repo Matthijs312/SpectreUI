@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.0
+
+### Added
+- Fullbright toggle — removes all darkness, fog, and shadows instantly
+- Saves/restores original lighting values when toggled off
+
+---
+
 ## v2.9
 
 ### Added

@@ -175,6 +175,7 @@ local function saveConfig()
         HitboxTransparency = ESP.HitboxTransparency,
         HitboxIgnoreTeam = ESP.HitboxIgnoreTeam,
         InfiniteJumpEnabled = ESP.InfiniteJumpEnabled,
+        FullbrightEnabled = ESP.FullbrightEnabled,
         -- Keybinds
         ToggleMenuKey = getKeyName(Keybinds.ToggleMenu),
         AimLockKey = getKeyName(Keybinds.AimLock),
@@ -215,6 +216,7 @@ local function loadConfig()
     if data.HitboxTransparency ~= nil then ESP.HitboxTransparency = data.HitboxTransparency end
     if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
     if data.InfiniteJumpEnabled ~= nil then ESP.InfiniteJumpEnabled = data.InfiniteJumpEnabled end
+    if data.FullbrightEnabled ~= nil then ESP.FullbrightEnabled = data.FullbrightEnabled end
     -- Keybinds
     if data.ToggleMenuKey then
         local ok3, key = pcall(function() return Enum.KeyCode[data.ToggleMenuKey] end)
@@ -418,7 +420,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v2.9"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v3.0"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -887,7 +889,7 @@ local ESP = {
     HitboxTransparency = 0.6, HitboxIgnoreTeam = true,
     FOVRadius = 200, ShowFOVCircle = false,
     LockSmooth = 0.7,
-    InfiniteJumpEnabled = false,
+    InfiniteJumpEnabled = false, FullbrightEnabled = false,
     CrosshairEnabled = false, CrosshairSize = 12, CrosshairThickness = 2,
     CrosshairColor = theme.accent, CrosshairGap = 4, CrosshairDot = false,
     CrosshairColorIndex = 5,
@@ -1334,7 +1336,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.9"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v3.0"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1482,6 +1484,46 @@ end)
 
 addLabel("Press jump while mid-air to jump again", hitboxTab)
 
+addSpacer(2, hitboxTab)
+addSectionHeader("Visuals", hitboxTab)
+
+local Lighting = game:GetService("Lighting")
+local originalLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    GlobalShadows = Lighting.GlobalShadows,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+}
+
+local function setFullbright(on)
+    if on then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+        Lighting.Ambient = Color3.fromRGB(178, 178, 178)
+        Lighting.OutdoorAmbient = Color3.fromRGB(178, 178, 178)
+    else
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.ClockTime = originalLighting.ClockTime
+        Lighting.FogEnd = originalLighting.FogEnd
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
+        Lighting.Ambient = originalLighting.Ambient
+        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+    end
+end
+
+local fullbrightToggle = addToggle("Fullbright", hitboxTab)
+fullbrightToggle:onChanged(function(on)
+    ESP.FullbrightEnabled = on
+    setFullbright(on)
+    notify(on and "Fullbright Enabled" or "Fullbright Disabled", on and theme.toggleOn or theme.red)
+end)
+
+addLabel("Removes all darkness and shadows", hitboxTab)
+
 -- ────────────────────────────────────────────────
 -- Tab: Crosshair
 -- ────────────────────────────────────────────────
@@ -1539,7 +1581,7 @@ addLabel("Settings are saved with your config", crossTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.9", settingsTab)
+addLabel("SPECTRE ESP v3.0", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1624,6 +1666,8 @@ local function syncUI()
     crossDotToggle:setState(ESP.CrosshairDot)
     hbTeamToggle:setState(ESP.HitboxIgnoreTeam)
     infJumpToggle:setState(ESP.InfiniteJumpEnabled)
+    fullbrightToggle:setState(ESP.FullbrightEnabled)
+    setFullbright(ESP.FullbrightEnabled)
     fillSlider:setValue(ESP.FillTransparency)
     outlineSlider:setValue(ESP.OutlineTransparency)
     smoothSlider:setValue(ESP.LockSmooth)
@@ -1723,6 +1767,7 @@ dualConnect(resetBtn, function()
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
     ESP.HitboxMultiplier = 4.0; ESP.HitboxTransparency = 0.6; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
+    ESP.FullbrightEnabled = false
     ESP.CrosshairEnabled = false; ESP.CrosshairSize = 12; ESP.CrosshairGap = 4; ESP.CrosshairThickness = 2
     ESP.CrosshairDot = false; ESP.CrosshairColorIndex = 5; ESP.CrosshairColor = theme.accent
     -- Reset keybinds
@@ -1836,12 +1881,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.9 loaded")
+print("SPECTRE ESP v3.0 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.9 loaded", theme.accent)
+    notify("SPECTRE v3.0 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
