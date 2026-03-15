@@ -1068,10 +1068,7 @@ task.spawn(function()
             if player == LocalPlayer then continue end
             if not player.Character then continue end
             if ESP.HitboxIgnoreTeam and LocalPlayer.Team and player.Team == LocalPlayer.Team then continue end
-            local key = tostring(player.UserId)
-            if not appliedTo[key] then
-                expandHead(player)
-            end
+            expandHead(player)
         end
     end
 end)
