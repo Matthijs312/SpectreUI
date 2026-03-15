@@ -1313,13 +1313,46 @@ local playerConnections = {} -- [Player] = {connection, ...}
 
 local function hookPlayer(plr)
     if plr == LocalPlayer then return end
-    local conn = plr.CharacterAdded:Connect(function()
+    local conn = plr.CharacterAdded:Connect(function(char)
         origHeadSizes[tostring(plr.UserId)]   = nil
         origHeadCollide[tostring(plr.UserId)] = nil
         appliedTo[tostring(plr.UserId)]       = nil
         if ESP.Enabled then task.wait(0.15); createHighlight(plr) end
+        -- Watch for Head streaming in (for StreamingEnabled games)
+        if ESP.HitboxExpanderEnabled then
+            local head = char:FindFirstChild("Head")
+            if head then
+                expandHead(plr)
+            end
+        end
+        local descConn
+        descConn = char.DescendantAdded:Connect(function(desc)
+            if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
+                local key = tostring(plr.UserId)
+                if not appliedTo[key] then
+                    if ESP.HitboxIgnoreTeam and LocalPlayer.Team and plr.Team == LocalPlayer.Team then return end
+                    expandHead(plr)
+                end
+            end
+        end)
+        -- Store so we can disconnect later
+        table.insert(playerConnections[plr], descConn)
     end)
     playerConnections[plr] = {conn}
+    -- Also hook existing character if already loaded
+    if plr.Character then
+        local char = plr.Character
+        local descConn = char.DescendantAdded:Connect(function(desc)
+            if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
+                local key = tostring(plr.UserId)
+                if not appliedTo[key] then
+                    if ESP.HitboxIgnoreTeam and LocalPlayer.Team and plr.Team == LocalPlayer.Team then return end
+                    expandHead(plr)
+                end
+            end
+        end)
+        table.insert(playerConnections[plr], descConn)
+    end
 end
 Players.PlayerAdded:Connect(hookPlayer)
 for _, p in Players:GetPlayers() do hookPlayer(p) end
