@@ -224,8 +224,8 @@ local function dualConnect(btn, callback)
     local function wrapped()
         if debounce then return end
         debounce = true
-        callback()
         task.delay(0.1, function() debounce = false end)
+        callback()
     end
     btn.Activated:Connect(wrapped)
     btn.MouseButton1Click:Connect(wrapped)
@@ -1124,7 +1124,8 @@ local function isAimLockInput(input)
     end
 end
 
-UserInput.InputBegan:Connect(function(input, _gp)
+UserInput.InputBegan:Connect(function(input, gp)
+    if gp and input.UserInputType == Enum.UserInputType.MouseButton1 then return end
     if not ESP.CursorLockEnabled then return end
     if not isAimLockInput(input) then return end
     if ESP.HoldToAim then
