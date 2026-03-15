@@ -40,8 +40,181 @@ local theme = {
     sliderFill  = Color3.fromRGB(80, 160, 235),
 }
 
+local HttpService = game:GetService("HttpService")
+
 local TWEEN_FAST = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_MED  = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+-- ────────────────────────────────────────────────
+-- Notification System
+-- ────────────────────────────────────────────────
+
+local notifContainer = Instance.new("Frame")
+notifContainer.Size = UDim2.new(0, 240, 1, 0)
+notifContainer.Position = UDim2.new(1, -250, 0, 10)
+notifContainer.BackgroundTransparency = 1
+notifContainer.ZIndex = 20
+notifContainer.Parent = sg
+
+local notifLayout = Instance.new("UIListLayout")
+notifLayout.Padding = UDim.new(0, 6)
+notifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+notifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+notifLayout.Parent = notifContainer
+
+local notifOrder = 0
+
+local function notify(text, color)
+    notifOrder = notifOrder + 1
+    color = color or theme.accent
+
+    local toast = Instance.new("Frame")
+    toast.Size = UDim2.new(1, 0, 0, 36)
+    toast.BackgroundColor3 = theme.surface
+    toast.BorderSizePixel = 0
+    toast.BackgroundTransparency = 1
+    toast.ZIndex = 20
+    toast.LayoutOrder = notifOrder
+    toast.Parent = notifContainer
+    Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 8)
+    local ts = Instance.new("UIStroke", toast)
+    ts.Color = color; ts.Thickness = 1; ts.Transparency = 0.5
+
+    local accentBar = Instance.new("Frame")
+    accentBar.Size = UDim2.new(0, 3, 0, 20)
+    accentBar.Position = UDim2.new(0, 8, 0.5, -10)
+    accentBar.BackgroundColor3 = color
+    accentBar.BorderSizePixel = 0; accentBar.ZIndex = 21
+    accentBar.Parent = toast
+    Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -24, 1, 0)
+    lbl.Position = UDim2.new(0, 18, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.Text = text; lbl.TextColor3 = theme.text
+    lbl.TextSize = 12; lbl.ZIndex = 21
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = toast
+
+    -- Slide in
+    TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.08
+    }):Play()
+
+    -- Fade out after 2.5s
+    task.delay(2.5, function()
+        local tw = TweenService:Create(toast, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            BackgroundTransparency = 1
+        })
+        TweenService:Create(lbl, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+        TweenService:Create(ts, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Transparency = 1}):Play()
+        TweenService:Create(accentBar, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+        tw:Play()
+        tw.Completed:Wait()
+        toast:Destroy()
+    end)
+end
+
+-- ────────────────────────────────────────────────
+-- Keybind System
+-- ────────────────────────────────────────────────
+
+local Keybinds = {
+    ToggleMenu = Enum.KeyCode.Insert,
+    AimLock = Enum.UserInputType.MouseButton2,
+}
+
+local function getKeyName(key)
+    if typeof(key) == "EnumItem" then
+        if key.EnumType == Enum.KeyCode then
+            return key.Name
+        elseif key.EnumType == Enum.UserInputType then
+            if key == Enum.UserInputType.MouseButton1 then return "Mouse1"
+            elseif key == Enum.UserInputType.MouseButton2 then return "Mouse2"
+            elseif key == Enum.UserInputType.MouseButton3 then return "Mouse3"
+            else return key.Name end
+        end
+    end
+    return tostring(key)
+end
+
+-- ────────────────────────────────────────────────
+-- Config Save/Load
+-- ────────────────────────────────────────────────
+
+local CONFIG_DIR = "SpectreESP"
+local CONFIG_FILE = CONFIG_DIR .. "/config.json"
+
+local function saveConfig()
+    local data = {
+        -- ESP
+        FillTransparency = ESP.FillTransparency,
+        OutlineTransparency = ESP.OutlineTransparency,
+        ShowNames = ESP.ShowNames,
+        ShowHP = ESP.ShowHP,
+        ShowDistance = ESP.ShowDistance,
+        -- Aim Lock
+        IgnoreTeam = ESP.IgnoreTeam,
+        HoldToAim = ESP.HoldToAim,
+        LockSmooth = ESP.LockSmooth,
+        FOVRadius = ESP.FOVRadius,
+        ShowFOVCircle = ESP.ShowFOVCircle,
+        -- Hitbox
+        HitboxMultiplier = ESP.HitboxMultiplier,
+        HitboxIgnoreTeam = ESP.HitboxIgnoreTeam,
+        -- Keybinds
+        ToggleMenuKey = getKeyName(Keybinds.ToggleMenu),
+        AimLockKey = getKeyName(Keybinds.AimLock),
+    }
+    pcall(function()
+        if not isfolder(CONFIG_DIR) then makefolder(CONFIG_DIR) end
+        writefile(CONFIG_FILE, HttpService:JSONEncode(data))
+    end)
+end
+
+local function loadConfig()
+    local ok, raw = pcall(function() return readfile(CONFIG_FILE) end)
+    if not ok or not raw then return false end
+    local ok2, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if not ok2 or type(data) ~= "table" then return false end
+
+    -- ESP
+    if data.FillTransparency ~= nil then ESP.FillTransparency = data.FillTransparency end
+    if data.OutlineTransparency ~= nil then ESP.OutlineTransparency = data.OutlineTransparency end
+    if data.ShowNames ~= nil then ESP.ShowNames = data.ShowNames end
+    if data.ShowHP ~= nil then ESP.ShowHP = data.ShowHP end
+    if data.ShowDistance ~= nil then ESP.ShowDistance = data.ShowDistance end
+    -- Aim Lock
+    if data.IgnoreTeam ~= nil then ESP.IgnoreTeam = data.IgnoreTeam end
+    if data.HoldToAim ~= nil then ESP.HoldToAim = data.HoldToAim end
+    if data.LockSmooth ~= nil then ESP.LockSmooth = data.LockSmooth end
+    if data.FOVRadius ~= nil then ESP.FOVRadius = data.FOVRadius end
+    if data.ShowFOVCircle ~= nil then ESP.ShowFOVCircle = data.ShowFOVCircle end
+    -- Hitbox
+    if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
+    if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
+    -- Keybinds
+    if data.ToggleMenuKey then
+        local ok3, key = pcall(function() return Enum.KeyCode[data.ToggleMenuKey] end)
+        if ok3 and key then Keybinds.ToggleMenu = key end
+    end
+    if data.AimLockKey then
+        local ok3, key = pcall(function() return Enum.UserInputType[data.AimLockKey] end)
+        if not ok3 then ok3, key = pcall(function() return Enum.KeyCode[data.AimLockKey] end) end
+        if ok3 and key then Keybinds.AimLock = key end
+    end
+
+    return true
+end
+
+-- Check if executor supports file system
+local filesystemSupported = pcall(function() return writefile and readfile and makefolder and isfolder end)
+    and type(writefile) == "function"
+
+-- Load config early so ESP state is ready before UI is built
+local configLoaded = loadConfig()
 
 -- Dual-connect helper: fires callback on both Activated and MouseButton1Click with debounce
 local function dualConnect(btn, callback)
@@ -212,7 +385,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,40,0,18); ver.Position = UDim2.new(0,138,0.5,-9)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamSemibold
-ver.Text = "v2.1"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.2"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 5)
 
 local closeBtn = Instance.new("TextButton")
@@ -887,10 +1060,19 @@ local function findNearestPlayer()
     end}
 end
 
+local function isAimLockInput(input)
+    local bind = Keybinds.AimLock
+    if bind.EnumType == Enum.UserInputType then
+        return input.UserInputType == bind
+    else
+        return input.KeyCode == bind
+    end
+end
+
 UserInput.InputBegan:Connect(function(input, gp)
     if gp then return end
     if not ESP.CursorLockEnabled then return end
-    if input.UserInputType ~= Enum.UserInputType.MouseButton2 then return end
+    if not isAimLockInput(input) then return end
     if ESP.HoldToAim then
         ESP.CursorLockedTarget = findNearestPlayer()
     else
@@ -901,7 +1083,7 @@ end)
 
 UserInput.InputEnded:Connect(function(input)
     if not ESP.CursorLockEnabled or not ESP.HoldToAim then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then ESP.CursorLockedTarget = nil end
+    if isAimLockInput(input) then ESP.CursorLockedTarget = nil end
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -954,7 +1136,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,48); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.1"
+ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.2"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 12; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -977,6 +1159,7 @@ local espToggle = addToggle("ESP Highlights", espTab)
 espToggle:onChanged(function(on)
     if on then enableESP() else disableESP() end
     updateIndicators()
+    notify(on and "ESP Enabled" or "ESP Disabled", on and theme.toggleOn or theme.red)
 end)
 
 addSpacer(2, espTab)
@@ -1011,6 +1194,7 @@ aimToggle:onChanged(function(on)
     if not on then ESP.CursorLockedTarget = nil end
     updateFOVCircle()
     updateIndicators()
+    notify(on and "Aim Lock Enabled" or "Aim Lock Disabled", on and theme.toggleOn or theme.red)
 end)
 
 addSpacer(2, aimTab)
@@ -1058,6 +1242,7 @@ hbToggle:onChanged(function(on)
     ESP.HitboxExpanderEnabled = on
     if on then expandAllHeads() else restoreAllHeads() end
     updateIndicators()
+    notify(on and "Hitbox Expander Enabled" or "Hitbox Expander Disabled", on and theme.toggleOn or theme.red)
 end)
 
 addSpacer(2, hitboxTab)
@@ -1088,16 +1273,136 @@ addLabel("Some games may detect this", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.1", settingsTab)
+addLabel("SPECTRE ESP v2.2", settingsTab)
+
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
-addLabel("INSERT — Toggle menu", settingsTab)
-addLabel("Right-Click — Aim lock (toggle or hold)", settingsTab)
+addLabel("Click a keybind button, then press a key", settingsTab)
+addSpacer(2, settingsTab)
+
+-- Keybind button component
+local function addKeybindButton(text, bindName, parent)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1,-8,0,40); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    local rowStroke = Instance.new("UIStroke", row); rowStroke.Color = theme.border; rowStroke.Thickness = 1; rowStroke.Transparency = 0.3
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1,-110,1,0); lbl.Position = UDim2.new(0,14,0,0)
+    lbl.BackgroundTransparency = 1; lbl.Font = Enum.Font.GothamSemibold
+    lbl.Text = text; lbl.TextColor3 = theme.text; lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = row
+
+    local keyBtn = Instance.new("TextButton")
+    keyBtn.Size = UDim2.new(0,88,0,26); keyBtn.Position = UDim2.new(1,-98,0.5,-13)
+    keyBtn.BackgroundColor3 = theme.bg; keyBtn.BorderSizePixel = 0
+    keyBtn.Font = Enum.Font.GothamSemibold; keyBtn.TextSize = 12
+    keyBtn.Text = getKeyName(Keybinds[bindName])
+    keyBtn.TextColor3 = theme.accent; keyBtn.AutoButtonColor = false
+    keyBtn.Parent = row
+    Instance.new("UICorner", keyBtn).CornerRadius = UDim.new(0, 6)
+
+    local listening = false
+    local listenConn = nil
+
+    dualConnect(keyBtn, function()
+        if listening then return end
+        listening = true
+        keyBtn.Text = "..."
+        keyBtn.TextColor3 = theme.red
+
+        listenConn = UserInput.InputBegan:Connect(function(input, gp)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                Keybinds[bindName] = input.KeyCode
+                keyBtn.Text = getKeyName(input.KeyCode)
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.MouseButton2
+                or input.UserInputType == Enum.UserInputType.MouseButton3 then
+                Keybinds[bindName] = input.UserInputType
+                keyBtn.Text = getKeyName(input.UserInputType)
+            else
+                listening = false
+                keyBtn.Text = getKeyName(Keybinds[bindName])
+                keyBtn.TextColor3 = theme.accent
+                if listenConn then listenConn:Disconnect(); listenConn = nil end
+                return
+            end
+            listening = false
+            keyBtn.TextColor3 = theme.accent
+            if listenConn then listenConn:Disconnect(); listenConn = nil end
+            saveConfig()
+            notify(text .. " set to " .. getKeyName(Keybinds[bindName]), theme.accent)
+        end)
+    end)
+
+    return keyBtn
+end
+
+addKeybindButton("Toggle Menu", "ToggleMenu", settingsTab)
+addKeybindButton("Aim Lock", "AimLock", settingsTab)
+
 addSpacer(4, settingsTab)
-addSectionHeader("Features", settingsTab)
-addLabel("ESP — Player highlights with info", settingsTab)
-addLabel("Aim Lock — Camera lock to players", settingsTab)
-addLabel("Hitbox — Expand head for easier hits", settingsTab)
+addSectionHeader("Config", settingsTab)
+
+-- Save button
+local saveRow = Instance.new("Frame")
+saveRow.Size = UDim2.new(1,-8,0,40); saveRow.BackgroundColor3 = theme.elevated; saveRow.BorderSizePixel = 0; saveRow.Parent = settingsTab
+Instance.new("UICorner", saveRow).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", saveRow).Color = theme.border
+
+local saveBtn = Instance.new("TextButton")
+saveBtn.Size = UDim2.new(1,0,1,0); saveBtn.BackgroundTransparency = 1
+saveBtn.Font = Enum.Font.GothamSemibold; saveBtn.Text = "Save Config"
+saveBtn.TextColor3 = theme.toggleOn; saveBtn.TextSize = 13
+saveBtn.AutoButtonColor = false; saveBtn.Parent = saveRow
+
+dualConnect(saveBtn, function()
+    if not filesystemSupported then
+        notify("Executor doesn't support saving", theme.red)
+        return
+    end
+    saveConfig()
+    notify("Config saved", theme.toggleOn)
+end)
+
+saveBtn.MouseEnter:Connect(function()
+    TweenService:Create(saveRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated:Lerp(Color3.new(1,1,1), 0.04)}):Play()
+end)
+saveBtn.MouseLeave:Connect(function()
+    TweenService:Create(saveRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
+end)
+
+-- Load button
+local loadRow = Instance.new("Frame")
+loadRow.Size = UDim2.new(1,-8,0,40); loadRow.BackgroundColor3 = theme.elevated; loadRow.BorderSizePixel = 0; loadRow.Parent = settingsTab
+Instance.new("UICorner", loadRow).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", loadRow).Color = theme.border
+
+local loadBtn = Instance.new("TextButton")
+loadBtn.Size = UDim2.new(1,0,1,0); loadBtn.BackgroundTransparency = 1
+loadBtn.Font = Enum.Font.GothamSemibold; loadBtn.Text = "Load Config"
+loadBtn.TextColor3 = theme.accent; loadBtn.TextSize = 13
+loadBtn.AutoButtonColor = false; loadBtn.Parent = loadRow
+
+dualConnect(loadBtn, function()
+    if loadConfig() then
+        notify("Config loaded — reopen menu to see changes", theme.toggleOn)
+    else
+        notify("No saved config found", theme.red)
+    end
+end)
+
+loadBtn.MouseEnter:Connect(function()
+    TweenService:Create(loadRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated:Lerp(Color3.new(1,1,1), 0.04)}):Play()
+end)
+loadBtn.MouseLeave:Connect(function()
+    TweenService:Create(loadRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
+end)
+
+addSpacer(4, settingsTab)
+addSectionHeader("Info", settingsTab)
+addLabel("Config saves to executor's workspace folder", settingsTab)
+addLabel("Keybinds are saved with config", settingsTab)
 
 -- ────────────────────────────────────────────────
 -- Auto-select first tab
@@ -1153,10 +1458,25 @@ dualConnect(closeBtn, closeMenu)
 
 UserInput.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.Insert then
+    if input.KeyCode == Keybinds.ToggleMenu then
         if isOpen then closeMenu() else openMenu() end
     end
 end)
 
-print("SPECTRE ESP v2.1 loaded")
-print("→ Open with INSERT or S button")
+print("SPECTRE ESP v2.2 loaded")
+print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
+
+task.defer(function()
+    task.wait(0.5)
+    notify("SPECTRE v2.2 loaded", theme.accent)
+    if configLoaded then
+        task.wait(0.3)
+        notify("Config loaded", theme.toggleOn)
+    elseif filesystemSupported then
+        task.wait(0.3)
+        notify("No config found — using defaults", theme.textDim)
+    else
+        task.wait(0.3)
+        notify("Executor doesn't support saving configs", theme.red)
+    end
+end)

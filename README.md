@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.1
+# SPECTRE ESP v2.2
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -21,6 +21,11 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - Auto-applies to new players and respawns every 2 seconds
 - Optional teammate skip
 
+### Settings
+- **Keybind customization** — rebind toggle menu and aim lock to any key or mouse button
+- **Config save/load** — persists all settings, slider values, and keybinds between sessions
+- **Toast notifications** — on-screen popups when features are toggled or config is saved/loaded
+
 ## UI
 
 - **Dark theme** — custom design system with accent colors, smooth tweens, and rounded corners
@@ -32,6 +37,8 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - **Smooth animations** — open/close scale transitions, hover effects, toggle animations
 
 ## Keybinds
+
+Default keybinds (rebindable in Settings tab):
 
 | Key | Action |
 |---|---|
