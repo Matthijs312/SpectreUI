@@ -69,16 +69,16 @@ local function notify(text, color)
     color = color or theme.accent
 
     local toast = Instance.new("Frame")
-    toast.Size = UDim2.new(1, 0, 0, 36)
+    toast.Size = UDim2.new(1, 0, 0, 38)
     toast.BackgroundColor3 = theme.surface
     toast.BorderSizePixel = 0
     toast.BackgroundTransparency = 1
     toast.ZIndex = 20
     toast.LayoutOrder = notifOrder
     toast.Parent = notifContainer
-    Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 10)
     local ts = Instance.new("UIStroke", toast)
-    ts.Color = color; ts.Thickness = 1; ts.Transparency = 0.5
+    ts.Color = color; ts.Thickness = 1; ts.Transparency = 0.4
 
     local accentBar = Instance.new("Frame")
     accentBar.Size = UDim2.new(0, 3, 0, 20)
@@ -236,18 +236,18 @@ end
 -- ────────────────────────────────────────────────
 
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size             = UDim2.new(0, 48, 0, 48)
-toggleBtn.Position         = UDim2.new(1, -68, 1, -78)
+toggleBtn.Size             = UDim2.new(0, 50, 0, 50)
+toggleBtn.Position         = UDim2.new(1, -70, 1, -80)
 toggleBtn.BackgroundColor3 = theme.surface
 toggleBtn.Text             = "S"
 toggleBtn.TextColor3       = theme.accent
 toggleBtn.Font             = Enum.Font.GothamBlack
-toggleBtn.TextSize         = 20
+toggleBtn.TextSize         = 22
 toggleBtn.AutoButtonColor  = false
 toggleBtn.ZIndex           = 10
 toggleBtn.Parent           = sg
 
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 14)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 16)
 
 local toggleStroke = Instance.new("UIStroke", toggleBtn)
 toggleStroke.Color     = theme.border
@@ -353,46 +353,62 @@ main.ClipsDescendants = true
 main.Visible          = false
 main.Parent           = sg
 
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
 local mainStroke = Instance.new("UIStroke", main)
 mainStroke.Color = theme.border; mainStroke.Thickness = 1; mainStroke.Transparency = 0.2
 
--- Top accent
+-- Drop shadow (subtle outer glow)
+local shadow = Instance.new("Frame")
+shadow.Size = UDim2.new(1, 12, 1, 12); shadow.Position = UDim2.new(0, -6, 0, -6)
+shadow.BackgroundTransparency = 1; shadow.ZIndex = -1; shadow.Parent = main
+Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 16)
+local shadowStroke = Instance.new("UIStroke", shadow)
+shadowStroke.Color = Color3.new(0, 0, 0); shadowStroke.Thickness = 4; shadowStroke.Transparency = 0.7
+
+-- Top accent bar (gradient)
 local topAccent = Instance.new("Frame")
-topAccent.Size = UDim2.new(1,0,0,2); topAccent.BackgroundColor3 = theme.accent
+topAccent.Size = UDim2.new(1,0,0,3); topAccent.BackgroundColor3 = theme.accent
 topAccent.BorderSizePixel = 0; topAccent.ZIndex = 5; topAccent.Parent = main
+Instance.new("UICorner", topAccent).CornerRadius = UDim.new(0, 12)
+local topGrad = Instance.new("UIGradient", topAccent)
+topGrad.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, theme.accent),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 120, 255))
+}
 
 -- Title bar
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1,0,0,42); titleBar.Position = UDim2.new(0,0,0,2)
+titleBar.Size = UDim2.new(1,0,0,46); titleBar.Position = UDim2.new(0,0,0,3)
 titleBar.BackgroundColor3 = theme.bg; titleBar.BorderSizePixel = 0; titleBar.Parent = main
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(0,200,1,0); title.Position = UDim2.new(0,16,0,0)
+title.Size = UDim2.new(0,200,1,0); title.Position = UDim2.new(0,18,0,0)
 title.BackgroundTransparency = 1; title.Font = Enum.Font.GothamBlack
-title.Text = "SPECTRE"; title.TextColor3 = theme.text; title.TextSize = 17
+title.Text = "SPECTRE"; title.TextColor3 = theme.text; title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = titleBar
 
 local dot = Instance.new("TextLabel")
-dot.Size = UDim2.new(0,20,1,0); dot.Position = UDim2.new(0,96,0,-1)
+dot.Size = UDim2.new(0,16,1,0); dot.Position = UDim2.new(0,102,0,-1)
 dot.BackgroundTransparency = 1; dot.Font = Enum.Font.GothamBlack
-dot.Text = "•"; dot.TextColor3 = theme.accent; dot.TextSize = 18; dot.Parent = titleBar
+dot.Text = "//"; dot.TextColor3 = theme.accent; dot.TextSize = 14; dot.Parent = titleBar
 
 local subtitle = Instance.new("TextLabel")
-subtitle.Size = UDim2.new(0,200,1,0); subtitle.Position = UDim2.new(0,110,0,1)
-subtitle.BackgroundTransparency = 1; subtitle.Font = Enum.Font.Gotham
-subtitle.Text = "ESP"; subtitle.TextColor3 = theme.textDim; subtitle.TextSize = 13
+subtitle.Size = UDim2.new(0,200,1,0); subtitle.Position = UDim2.new(0,120,0,1)
+subtitle.BackgroundTransparency = 1; subtitle.Font = Enum.Font.GothamSemibold
+subtitle.Text = "ESP SUITE"; subtitle.TextColor3 = theme.textDim; subtitle.TextSize = 12
 subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 
 local ver = Instance.new("TextLabel")
-ver.Size = UDim2.new(0,40,0,18); ver.Position = UDim2.new(0,138,0.5,-9)
-ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamSemibold
-ver.Text = "v2.4"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
-Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 5)
+ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
+ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
+ver.Text = "v2.5"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
+local verStroke = Instance.new("UIStroke", ver)
+verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
 
 -- Minimize button
 local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0,30,0,30); minimizeBtn.Position = UDim2.new(1,-76,0,6)
+minimizeBtn.Size = UDim2.new(0,30,0,30); minimizeBtn.Position = UDim2.new(1,-76,0.5,-15)
 minimizeBtn.BackgroundTransparency = 1; minimizeBtn.Text = "-"
 minimizeBtn.TextColor3 = theme.textMuted; minimizeBtn.Font = Enum.Font.GothamBold
 minimizeBtn.TextSize = 20; minimizeBtn.Parent = titleBar
@@ -409,7 +425,7 @@ local isMinimized = false
 local preMinimizeH = nil
 
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0,30,0,30); closeBtn.Position = UDim2.new(1,-42,0,6)
+closeBtn.Size = UDim2.new(0,30,0,30); closeBtn.Position = UDim2.new(1,-42,0.5,-15)
 closeBtn.BackgroundTransparency = 1; closeBtn.Text = "X"
 closeBtn.TextColor3 = theme.textMuted; closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 16; closeBtn.Parent = titleBar
@@ -424,9 +440,15 @@ end)
 
 -- Divider
 local div = Instance.new("Frame")
-div.Size = UDim2.new(1,-24,0,1); div.Position = UDim2.new(0,12,0,44)
+div.Size = UDim2.new(1,0,0,1); div.Position = UDim2.new(0,0,0,49)
 div.BackgroundColor3 = theme.border; div.BorderSizePixel = 0
-div.BackgroundTransparency = 0.4; div.Parent = main
+div.BackgroundTransparency = 0.3; div.Parent = main
+local divGrad = Instance.new("UIGradient", div)
+divGrad.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 0.8),
+    NumberSequenceKeypoint.new(0.5, 0),
+    NumberSequenceKeypoint.new(1, 0.8)
+}
 
 -- Draggable
 local dragging, dragInput, dragStart, startPos
@@ -512,7 +534,7 @@ end)
 -- Tab Sidebar
 -- ────────────────────────────────────────────────
 
-local SIDEBAR_W, TAB_TOP = 130, 52
+local SIDEBAR_W, TAB_TOP = 138, 54
 
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0,SIDEBAR_W,1,-TAB_TOP); sidebar.Position = UDim2.new(0,0,0,TAB_TOP)
@@ -521,16 +543,16 @@ sidebar.BackgroundColor3 = theme.surface; sidebar.BorderSizePixel = 0; sidebar.P
 local sidebarEdge = Instance.new("Frame")
 sidebarEdge.Size = UDim2.new(0,1,1,-TAB_TOP); sidebarEdge.Position = UDim2.new(0,SIDEBAR_W,0,TAB_TOP)
 sidebarEdge.BackgroundColor3 = theme.border; sidebarEdge.BorderSizePixel = 0
-sidebarEdge.BackgroundTransparency = 0.4; sidebarEdge.Parent = main
+sidebarEdge.BackgroundTransparency = 0.5; sidebarEdge.Parent = main
 
 local sidebarInner = Instance.new("Frame")
-sidebarInner.Size = UDim2.new(1,-12,1,0); sidebarInner.Position = UDim2.new(0,6,0,0)
+sidebarInner.Size = UDim2.new(1,-16,1,-8); sidebarInner.Position = UDim2.new(0,8,0,0)
 sidebarInner.BackgroundTransparency = 1; sidebarInner.Parent = sidebar
 
 local sidebarLayout = Instance.new("UIListLayout")
-sidebarLayout.Padding = UDim.new(0,2); sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarLayout.Padding = UDim.new(0,3); sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 sidebarLayout.Parent = sidebarInner
-Instance.new("UIPadding", sidebarInner).PaddingTop = UDim.new(0, 8)
+Instance.new("UIPadding", sidebarInner).PaddingTop = UDim.new(0, 10)
 
 local tabContent = Instance.new("Frame")
 tabContent.Size = UDim2.new(1,-(SIDEBAR_W+12),1,-(TAB_TOP+8))
@@ -566,13 +588,13 @@ end
 
 local function createTab(name, icon)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,34); btn.BackgroundTransparency = 1; btn.BorderSizePixel = 0
+    btn.Size = UDim2.new(1,0,0,36); btn.BackgroundTransparency = 1; btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamSemibold; btn.Text = (icon or "").."  "..name
     btn.TextColor3 = theme.textDim; btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left; btn.AutoButtonColor = false
     btn.Parent = sidebarInner
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
-    Instance.new("UIPadding", btn).PaddingLeft = UDim.new(0, 14)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIPadding", btn).PaddingLeft = UDim.new(0, 16)
 
     local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(1,0,1,0); content.BackgroundTransparency = 1
@@ -581,10 +603,10 @@ local function createTab(name, icon)
     content.ScrollBarImageColor3 = theme.border; content.Parent = tabContent
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0,6); layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0,7); layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Parent = content
     local pad = Instance.new("UIPadding", content)
-    pad.PaddingTop = UDim.new(0,4); pad.PaddingBottom = UDim.new(0,12)
+    pad.PaddingTop = UDim.new(0,6); pad.PaddingBottom = UDim.new(0,14)
 
     local entry = {btn = btn, content = content}
     table.insert(allTabs, entry)
@@ -592,10 +614,14 @@ local function createTab(name, icon)
     dualConnect(btn, function() selectTab(entry) end)
 
     btn.MouseEnter:Connect(function()
-        if currentTabBtn ~= btn then TweenService:Create(btn, TWEEN_FAST, {TextColor3=theme.text}):Play() end
+        if currentTabBtn ~= btn then
+            TweenService:Create(btn, TWEEN_FAST, {TextColor3=theme.text, BackgroundTransparency=0.92}):Play()
+        end
     end)
     btn.MouseLeave:Connect(function()
-        if currentTabBtn ~= btn then TweenService:Create(btn, TWEEN_FAST, {TextColor3=theme.textDim}):Play() end
+        if currentTabBtn ~= btn then
+            TweenService:Create(btn, TWEEN_FAST, {TextColor3=theme.textDim, BackgroundTransparency=1}):Play()
+        end
     end)
 
     return content
@@ -607,15 +633,24 @@ end
 
 local function addSectionHeader(text, parent)
     local c = Instance.new("Frame")
-    c.Size = UDim2.new(1,-8,0,28); c.BackgroundTransparency = 1; c.Parent = parent
+    c.Size = UDim2.new(1,-8,0,30); c.BackgroundTransparency = 1; c.Parent = parent
+
+    local accentDot = Instance.new("Frame")
+    accentDot.Size = UDim2.new(0, 4, 0, 4)
+    accentDot.Position = UDim2.new(0, 6, 0.5, -2)
+    accentDot.BackgroundColor3 = theme.accent; accentDot.BorderSizePixel = 0
+    accentDot.Parent = c
+    Instance.new("UICorner", accentDot).CornerRadius = UDim.new(1, 0)
+
     local l = Instance.new("TextLabel")
-    l.Size = UDim2.new(1,0,1,0); l.Position = UDim2.new(0,4,0,0); l.BackgroundTransparency = 1
+    l.Size = UDim2.new(1,-18,1,0); l.Position = UDim2.new(0,16,0,0); l.BackgroundTransparency = 1
     l.Font = Enum.Font.GothamBold; l.Text = string.upper(text); l.TextColor3 = theme.textMuted
     l.TextSize = 10; l.TextXAlignment = Enum.TextXAlignment.Left; l.Parent = c
+
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1,-4,0,1); line.Position = UDim2.new(0,2,1,-1)
     line.BackgroundColor3 = theme.border; line.BorderSizePixel = 0
-    line.BackgroundTransparency = 0.5; line.Parent = c
+    line.BackgroundTransparency = 0.6; line.Parent = c
 end
 
 local function addLabel(text, parent)
@@ -634,8 +669,8 @@ end
 local function addToggle(text, parent)
     local state = false
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1,-8,0,40); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    row.Size = UDim2.new(1,-8,0,42); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     local rowStroke = Instance.new("UIStroke", row)
     rowStroke.Color = theme.border; rowStroke.Thickness = 1; rowStroke.Transparency = 0.3
 
@@ -695,8 +730,8 @@ end
 local function addModeSelector(text, options, defaultIndex, parent, callback)
     local selected = defaultIndex or 1
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1,-8,0,40); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    row.Size = UDim2.new(1,-8,0,42); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     Instance.new("UIStroke", row).Color = theme.border
 
     local lbl = Instance.new("TextLabel")
@@ -758,8 +793,8 @@ local function addSlider(text, min, max, default, parent, callback, formatFn)
     local fmtFn = formatFn or function(v) return string.format("%.0f%%", v*100) end
 
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1,-8,0,52); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    row.Size = UDim2.new(1,-8,0,54); row.BackgroundColor3 = theme.elevated; row.BorderSizePixel = 0; row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     local rs = Instance.new("UIStroke", row); rs.Color = theme.border; rs.Thickness = 1; rs.Transparency = 0.3
 
     local lbl = Instance.new("TextLabel")
@@ -1158,21 +1193,32 @@ for _, p in Players:GetPlayers() do hookPlayer(p) end
 -- ────────────────────────────────────────────────
 
 local homeTab = createTab("Home", ">>")
-addSpacer(8, homeTab)
+addSpacer(6, homeTab)
 
 local lf = Instance.new("Frame")
-lf.Size = UDim2.new(1,-8,0,80); lf.BackgroundColor3 = theme.elevated; lf.BorderSizePixel = 0; lf.Parent = homeTab
-Instance.new("UICorner", lf).CornerRadius = UDim.new(0, 8)
-local ls = Instance.new("UIStroke", lf); ls.Color = theme.border; ls.Thickness = 1
+lf.Size = UDim2.new(1,-8,0,90); lf.BackgroundColor3 = theme.elevated; lf.BorderSizePixel = 0; lf.Parent = homeTab
+Instance.new("UICorner", lf).CornerRadius = UDim.new(0, 10)
+local ls = Instance.new("UIStroke", lf); ls.Color = theme.border; ls.Thickness = 1; ls.Transparency = 0.3
+
+-- Hero accent bar
+local heroBar = Instance.new("Frame")
+heroBar.Size = UDim2.new(1,0,0,3); heroBar.BackgroundColor3 = theme.accent
+heroBar.BorderSizePixel = 0; heroBar.Parent = lf
+Instance.new("UICorner", heroBar).CornerRadius = UDim.new(0, 10)
+local heroGrad = Instance.new("UIGradient", heroBar)
+heroGrad.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, theme.accent),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 120, 255))
+}
 
 local lt = Instance.new("TextLabel")
-lt.Size = UDim2.new(1,0,0,32); lt.Position = UDim2.new(0,0,0,14); lt.BackgroundTransparency = 1
-lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text; lt.TextSize = 24; lt.Parent = lf
+lt.Size = UDim2.new(1,0,0,32); lt.Position = UDim2.new(0,0,0,18); lt.BackgroundTransparency = 1
+lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text; lt.TextSize = 26; lt.Parent = lf
 
 local ls2 = Instance.new("TextLabel")
-ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,48); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.4"
-ls2.TextColor3 = theme.textMuted; ls2.TextSize = 12; ls2.Parent = lf
+ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.5"
+ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
 addSectionHeader("Quick Start", homeTab)
@@ -1319,7 +1365,7 @@ addLabel("Press jump while mid-air to jump again", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.4", settingsTab)
+addLabel("SPECTRE ESP v2.5", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1533,7 +1579,7 @@ local function closeMenu()
     task.delay(0.25, function() if not isOpen then main.Visible = false end end)
 end
 
-local TITLE_BAR_H = 46
+local TITLE_BAR_H = 52
 
 local function minimizeMenu()
     if not isOpen or isMinimized then return end
@@ -1572,12 +1618,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.4 loaded")
+print("SPECTRE ESP v2.5 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.4 loaded", theme.accent)
+    notify("SPECTRE v2.5 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)

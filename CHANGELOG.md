@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.5
+
+### Improved
+- Window now has a drop shadow and blue-to-purple gradient accent bar
+- Title bar taller with better spacing, `//` separator style, version badge with accent border
+- Divider fades out at edges with gradient transparency
+- Sidebar wider (138px) with subtle background hover on tabs
+- Section headers now have a small accent dot indicator
+- All rows (toggles, sliders, selectors) use consistent 10px rounded corners
+- Toggle/slider rows slightly taller for better click targets
+- Home tab hero card taller with gradient accent bar and larger title
+- Floating toggle button slightly larger (50px)
+- Toast notifications rounder and taller
+- Close/minimize buttons vertically centered in title bar
+
 ## v2.4
 
 ### Added
