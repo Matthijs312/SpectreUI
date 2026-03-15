@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.3
+# SPECTRE ESP v2.4
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -20,6 +20,9 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - Expands enemy head hitboxes (1x–12x multiplier)
 - Auto-applies to new players and respawns every 2 seconds
 - Optional teammate skip
+
+### Movement
+- **Infinite Jump** — jump mid-air, unlimited times
 
 ### Settings
 - **Keybind customization** — rebind toggle menu and aim lock to any key or mouse button

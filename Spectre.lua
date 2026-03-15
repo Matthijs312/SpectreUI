@@ -164,6 +164,7 @@ local function saveConfig()
         -- Hitbox
         HitboxMultiplier = ESP.HitboxMultiplier,
         HitboxIgnoreTeam = ESP.HitboxIgnoreTeam,
+        InfiniteJumpEnabled = ESP.InfiniteJumpEnabled,
         -- Keybinds
         ToggleMenuKey = getKeyName(Keybinds.ToggleMenu),
         AimLockKey = getKeyName(Keybinds.AimLock),
@@ -195,6 +196,7 @@ local function loadConfig()
     -- Hitbox
     if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
     if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
+    if data.InfiniteJumpEnabled ~= nil then ESP.InfiniteJumpEnabled = data.InfiniteJumpEnabled end
     -- Keybinds
     if data.ToggleMenuKey then
         local ok3, key = pcall(function() return Enum.KeyCode[data.ToggleMenuKey] end)
@@ -385,7 +387,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,40,0,18); ver.Position = UDim2.new(0,138,0.5,-9)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamSemibold
-ver.Text = "v2.3"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.4"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 5)
 
 -- Minimize button
@@ -823,6 +825,7 @@ local ESP = {
     HitboxIgnoreTeam = true,
     FOVRadius = 200, ShowFOVCircle = false,
     LockSmooth = 0.7,
+    InfiniteJumpEnabled = false,
 }
 
 local function getTeamColor(p)
@@ -1118,6 +1121,20 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ────────────────────────────────────────────────
+-- Infinite Jump
+-- ────────────────────────────────────────────────
+
+UserInput.JumpRequest:Connect(function()
+    if not ESP.InfiniteJumpEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildWhichIsA("Humanoid")
+    if hum then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ────────────────────────────────────────────────
 -- Player hooks
 -- ────────────────────────────────────────────────
 
@@ -1154,7 +1171,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,48); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.3"
+ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.4"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 12; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1285,13 +1302,24 @@ addLabel("Body stays completely normal", hitboxTab)
 addLabel("Re-checks every 2 seconds for new players", hitboxTab)
 addLabel("Some games may detect this", hitboxTab)
 
+addSpacer(4, hitboxTab)
+addSectionHeader("Movement", hitboxTab)
+
+local infJumpToggle = addToggle("Infinite Jump", hitboxTab)
+infJumpToggle:onChanged(function(on)
+    ESP.InfiniteJumpEnabled = on
+    notify(on and "Infinite Jump Enabled" or "Infinite Jump Disabled", on and theme.toggleOn or theme.red)
+end)
+
+addLabel("Press jump while mid-air to jump again", hitboxTab)
+
 -- ────────────────────────────────────────────────
 -- Tab: Settings
 -- ────────────────────────────────────────────────
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.3", settingsTab)
+addLabel("SPECTRE ESP v2.4", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1435,7 +1463,7 @@ dualConnect(resetBtn, function()
     ESP.ShowNames = true; ESP.ShowHP = true; ESP.ShowDistance = true
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
-    ESP.HitboxMultiplier = 4.0; ESP.HitboxIgnoreTeam = true
+    ESP.HitboxMultiplier = 4.0; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
     -- Reset keybinds
     Keybinds.ToggleMenu = Enum.KeyCode.Insert
     Keybinds.AimLock = Enum.UserInputType.MouseButton2
@@ -1544,12 +1572,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.3 loaded")
+print("SPECTRE ESP v2.4 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.3 loaded", theme.accent)
+    notify("SPECTRE v2.4 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)

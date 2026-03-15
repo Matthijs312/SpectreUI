@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.4
+
+### Added
+- Infinite Jump toggle in Hitbox tab — jump mid-air unlimited times
+- Infinite Jump state persists with config save/load
+
 ## v2.3
 
 ### Added
