@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.6
+
+### Added
+- 4th status indicator dot on toggle button for Infinite Jump
+
 ## v2.5
 
 ### Improved

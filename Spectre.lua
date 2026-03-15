@@ -286,13 +286,12 @@ toggleBtn.MouseLeave:Connect(function()
     TweenService:Create(toggleStroke, TWEEN_FAST, {Color = theme.border}):Play()
 end)
 
--- Status indicator dots (ESP, Aim, Hitbox)
-local indicatorNames = {"E", "A", "H"}
+-- Status indicator dots (ESP, Aim, Hitbox, Jump)
 local indicators = {}
-for i = 1, 3 do
+for i = 1, 4 do
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 8, 0, 8)
-    dot.Position = UDim2.new(0, 4 + (i - 1) * 13, 1, 4)
+    dot.Position = UDim2.new(0, 2 + (i - 1) * 12, 1, 4)
     dot.BackgroundColor3 = theme.toggleOff
     dot.BorderSizePixel = 0
     dot.ZIndex = 11
@@ -302,7 +301,7 @@ for i = 1, 3 do
 end
 
 local function updateIndicators()
-    local states = {ESP.Enabled, ESP.CursorLockEnabled, ESP.HitboxExpanderEnabled}
+    local states = {ESP.Enabled, ESP.CursorLockEnabled, ESP.HitboxExpanderEnabled, ESP.InfiniteJumpEnabled}
     for i, dot in ipairs(indicators) do
         local on = states[i]
         TweenService:Create(dot, TWEEN_FAST, {
@@ -401,7 +400,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v2.5"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.6"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -1217,7 +1216,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.5"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.6"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1354,6 +1353,7 @@ addSectionHeader("Movement", hitboxTab)
 local infJumpToggle = addToggle("Infinite Jump", hitboxTab)
 infJumpToggle:onChanged(function(on)
     ESP.InfiniteJumpEnabled = on
+    updateIndicators()
     notify(on and "Infinite Jump Enabled" or "Infinite Jump Disabled", on and theme.toggleOn or theme.red)
 end)
 
@@ -1365,7 +1365,7 @@ addLabel("Press jump while mid-air to jump again", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.5", settingsTab)
+addLabel("SPECTRE ESP v2.6", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1618,12 +1618,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.5 loaded")
+print("SPECTRE ESP v2.6 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.5 loaded", theme.accent)
+    notify("SPECTRE v2.6 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
