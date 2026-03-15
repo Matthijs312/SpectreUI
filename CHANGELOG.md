@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.8
+
+### Added
+- Crosshair overlay — custom crosshair drawn at screen center with adjustable size, gap, and thickness
+- Crosshair toggle, size, gap, and thickness sliders in the Aim Lock tab
+- Crosshair settings saved/loaded with config
+
+---
+
 ## v2.7
 
 ### Added

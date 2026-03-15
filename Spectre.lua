@@ -163,6 +163,11 @@ local function saveConfig()
         LockSmooth = ESP.LockSmooth,
         FOVRadius = ESP.FOVRadius,
         ShowFOVCircle = ESP.ShowFOVCircle,
+        -- Crosshair
+        CrosshairEnabled = ESP.CrosshairEnabled,
+        CrosshairSize = ESP.CrosshairSize,
+        CrosshairGap = ESP.CrosshairGap,
+        CrosshairThickness = ESP.CrosshairThickness,
         -- Hitbox
         HitboxMultiplier = ESP.HitboxMultiplier,
         HitboxTransparency = ESP.HitboxTransparency,
@@ -196,6 +201,11 @@ local function loadConfig()
     if data.LockSmooth ~= nil then ESP.LockSmooth = data.LockSmooth end
     if data.FOVRadius ~= nil then ESP.FOVRadius = data.FOVRadius end
     if data.ShowFOVCircle ~= nil then ESP.ShowFOVCircle = data.ShowFOVCircle end
+    -- Crosshair
+    if data.CrosshairEnabled ~= nil then ESP.CrosshairEnabled = data.CrosshairEnabled end
+    if data.CrosshairSize ~= nil then ESP.CrosshairSize = data.CrosshairSize end
+    if data.CrosshairGap ~= nil then ESP.CrosshairGap = data.CrosshairGap end
+    if data.CrosshairThickness ~= nil then ESP.CrosshairThickness = data.CrosshairThickness end
     -- Hitbox
     if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
     if data.HitboxTransparency ~= nil then ESP.HitboxTransparency = data.HitboxTransparency end
@@ -404,7 +414,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v2.7"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.8"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -874,6 +884,8 @@ local ESP = {
     FOVRadius = 200, ShowFOVCircle = false,
     LockSmooth = 0.7,
     InfiniteJumpEnabled = false,
+    CrosshairEnabled = false, CrosshairSize = 12, CrosshairThickness = 2,
+    CrosshairColor = theme.accent, CrosshairGap = 4,
 }
 
 local function getTeamColor(p)
@@ -1101,6 +1113,52 @@ local function updateFOVCircle()
 end
 
 -- ────────────────────────────────────────────────
+-- Crosshair Overlay
+-- ────────────────────────────────────────────────
+
+local crosshairContainer = Instance.new("Frame")
+crosshairContainer.Size = UDim2.new(0, 0, 0, 0)
+crosshairContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+crosshairContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+crosshairContainer.BackgroundTransparency = 1
+crosshairContainer.Visible = false
+crosshairContainer.ZIndex = 9
+crosshairContainer.Parent = sg
+
+local crossLines = {}
+for i = 1, 4 do
+    local line = Instance.new("Frame")
+    line.BackgroundColor3 = ESP.CrosshairColor
+    line.BorderSizePixel = 0
+    line.ZIndex = 9
+    line.Parent = crosshairContainer
+    crossLines[i] = line
+end
+
+local function updateCrosshair()
+    local s = ESP.CrosshairSize
+    local t = ESP.CrosshairThickness
+    local g = ESP.CrosshairGap
+    -- Top
+    crossLines[1].Size = UDim2.new(0, t, 0, s)
+    crossLines[1].Position = UDim2.new(0.5, -t/2, 0.5, -(g + s))
+    -- Bottom
+    crossLines[2].Size = UDim2.new(0, t, 0, s)
+    crossLines[2].Position = UDim2.new(0.5, -t/2, 0.5, g)
+    -- Left
+    crossLines[3].Size = UDim2.new(0, s, 0, t)
+    crossLines[3].Position = UDim2.new(0.5, -(g + s), 0.5, -t/2)
+    -- Right
+    crossLines[4].Size = UDim2.new(0, s, 0, t)
+    crossLines[4].Position = UDim2.new(0.5, g, 0.5, -t/2)
+
+    for _, l in ipairs(crossLines) do
+        l.BackgroundColor3 = ESP.CrosshairColor
+    end
+    crosshairContainer.Visible = ESP.CrosshairEnabled
+end
+
+-- ────────────────────────────────────────────────
 -- Aim Lock
 -- ────────────────────────────────────────────────
 
@@ -1168,8 +1226,10 @@ end)
 
 RunService.RenderStepped:Connect(function()
     local vp = Camera.ViewportSize
-    fovCircle.Position = UDim2.new(0, vp.X / 2, 0, vp.Y / 2 - guiInset.Y)
+    local cx, cy = vp.X / 2, vp.Y / 2 - guiInset.Y
+    fovCircle.Position = UDim2.new(0, cx, 0, cy)
     fovCircle.Visible = ESP.ShowFOVCircle and ESP.CursorLockEnabled
+    crosshairContainer.Position = UDim2.new(0, cx, 0, cy)
     if not ESP.CursorLockEnabled then ESP.CursorLockedTarget = nil; return end
     if ESP.CursorLockedTarget then
         local m = ESP.CursorLockedTarget.model
@@ -1243,7 +1303,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.7"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v2.8"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1331,6 +1391,28 @@ local fovSlider = addSlider("FOV Radius", 50, 500, 200, aimTab, function(v)
 end, function(v) return string.format("%.0fpx", v) end)
 
 addSpacer(2, aimTab)
+addSectionHeader("Crosshair", aimTab)
+
+local crossToggle = addToggle("Show Crosshair", aimTab)
+crossToggle:onChanged(function(on)
+    ESP.CrosshairEnabled = on
+    updateCrosshair()
+    notify(on and "Crosshair Enabled" or "Crosshair Disabled", on and theme.toggleOn or theme.red)
+end)
+
+local crossSizeSlider = addSlider("Size", 4, 30, 12, aimTab, function(v)
+    ESP.CrosshairSize = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+local crossGapSlider = addSlider("Gap", 0, 20, 4, aimTab, function(v)
+    ESP.CrosshairGap = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+local crossThickSlider = addSlider("Thickness", 1, 6, 2, aimTab, function(v)
+    ESP.CrosshairThickness = v; updateCrosshair()
+end, function(v) return string.format("%.0fpx", v) end)
+
+addSpacer(2, aimTab)
 addSectionHeader("How It Works", aimTab)
 addLabel("Toggle: right-click to lock, again to release", aimTab)
 addLabel("Hold: hold right-click to aim, release to stop", aimTab)
@@ -1397,7 +1479,7 @@ addLabel("Press jump while mid-air to jump again", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.7", settingsTab)
+addLabel("SPECTRE ESP v2.8", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1478,18 +1560,23 @@ local function syncUI()
     distToggle:setState(ESP.ShowDistance)
     teamToggle:setState(ESP.IgnoreTeam)
     fovToggle:setState(ESP.ShowFOVCircle)
+    crossToggle:setState(ESP.CrosshairEnabled)
     hbTeamToggle:setState(ESP.HitboxIgnoreTeam)
     infJumpToggle:setState(ESP.InfiniteJumpEnabled)
     fillSlider:setValue(ESP.FillTransparency)
     outlineSlider:setValue(ESP.OutlineTransparency)
     smoothSlider:setValue(ESP.LockSmooth)
     fovSlider:setValue(ESP.FOVRadius)
+    crossSizeSlider:setValue(ESP.CrosshairSize)
+    crossGapSlider:setValue(ESP.CrosshairGap)
+    crossThickSlider:setValue(ESP.CrosshairThickness)
     multiplierSlider:setValue(ESP.HitboxMultiplier)
     transparencySlider:setValue(ESP.HitboxTransparency)
     aimModeSelector:setSelected(ESP.HoldToAim and 2 or 1)
     toggleMenuKeyBtn.Text = getKeyName(Keybinds.ToggleMenu)
     aimLockKeyBtn.Text = getKeyName(Keybinds.AimLock)
     updateFOVCircle()
+    updateCrosshair()
     updateIndicators()
 end
 
@@ -1571,6 +1658,7 @@ dualConnect(resetBtn, function()
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
     ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
     ESP.HitboxMultiplier = 4.0; ESP.HitboxTransparency = 0.6; ESP.HitboxIgnoreTeam = true; ESP.InfiniteJumpEnabled = false
+    ESP.CrosshairEnabled = false; ESP.CrosshairSize = 12; ESP.CrosshairGap = 4; ESP.CrosshairThickness = 2
     -- Reset keybinds
     Keybinds.ToggleMenu = Enum.KeyCode.Insert
     Keybinds.AimLock = Enum.UserInputType.MouseButton2
@@ -1682,12 +1770,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.7 loaded")
+print("SPECTRE ESP v2.8 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.7 loaded", theme.accent)
+    notify("SPECTRE v2.8 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)

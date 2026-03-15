@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.7
+# SPECTRE ESP v2.8
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -14,6 +14,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - Toggle or hold-to-aim modes
 - Adjustable smoothness (5%–100%)
 - FOV circle overlay with adjustable radius (50–500px)
+- Custom crosshair overlay with adjustable size, gap, and thickness
 - Teammate ignore option
 
 ### Head Expander
