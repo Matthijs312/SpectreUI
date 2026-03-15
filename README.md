@@ -18,6 +18,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 
 ### Head Expander
 - Expands enemy head hitboxes (1x–12x multiplier)
+- Adjustable hitbox transparency (0%–100%)
 - Auto-applies to new players and respawns every 2 seconds
 - Optional teammate skip
 
