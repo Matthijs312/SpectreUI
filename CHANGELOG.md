@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.3
+
+### Added
+- Minimize button — collapse window to title bar only, click to restore
+- Reset to Defaults button in Settings — restores all settings and keybinds in one click
+- Executor filesystem detection — startup notification tells you if config saving is supported
+
 ## v2.2
 
 ### Added

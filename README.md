@@ -1,4 +1,4 @@
-# SPECTRE ESP v2.2
+# SPECTRE ESP v2.3
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -24,6 +24,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 ### Settings
 - **Keybind customization** — rebind toggle menu and aim lock to any key or mouse button
 - **Config save/load** — persists all settings, slider values, and keybinds between sessions
+- **Reset to defaults** — one-click restore of all settings
 - **Toast notifications** — on-screen popups when features are toggled or config is saved/loaded
 
 ## UI
@@ -32,6 +33,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - **Tabbed sidebar** — Home, ESP, Aim Lock, Hitbox, Settings
 - **Draggable window** — grab the title bar to reposition
 - **Resizable window** — drag the bottom-right grip handle (min 380x320, max 800x600)
+- **Minimize button** — collapse to title bar only, click again to restore
 - **Floating toggle button** — draggable "S" button to open/close the menu from anywhere
 - **Status indicators** — three dots on the toggle button show which features are active at a glance
 - **Smooth animations** — open/close scale transitions, hover effects, toggle animations

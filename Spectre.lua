@@ -385,8 +385,26 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,40,0,18); ver.Position = UDim2.new(0,138,0.5,-9)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamSemibold
-ver.Text = "v2.2"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v2.3"; ver.TextColor3 = theme.textMuted; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 5)
+
+-- Minimize button
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0,30,0,30); minimizeBtn.Position = UDim2.new(1,-76,0,6)
+minimizeBtn.BackgroundTransparency = 1; minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = theme.textMuted; minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 20; minimizeBtn.Parent = titleBar
+Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 8)
+
+minimizeBtn.MouseEnter:Connect(function()
+    TweenService:Create(minimizeBtn, TWEEN_FAST, {BackgroundTransparency=0, BackgroundColor3=theme.elevated, TextColor3=theme.accent}):Play()
+end)
+minimizeBtn.MouseLeave:Connect(function()
+    TweenService:Create(minimizeBtn, TWEEN_FAST, {BackgroundTransparency=1, TextColor3=theme.textMuted}):Play()
+end)
+
+local isMinimized = false
+local preMinimizeH = nil
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0,30,0,30); closeBtn.Position = UDim2.new(1,-42,0,6)
@@ -1136,7 +1154,7 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,48); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.2"
+ls2.Font = Enum.Font.Gotham; ls2.Text = "ESP  •  Educational Tool  •  v2.3"
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 12; ls2.Parent = lf
 
 addSpacer(4, homeTab)
@@ -1273,7 +1291,7 @@ addLabel("Some games may detect this", hitboxTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v2.2", settingsTab)
+addLabel("SPECTRE ESP v2.3", settingsTab)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1399,6 +1417,42 @@ loadBtn.MouseLeave:Connect(function()
     TweenService:Create(loadRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
 end)
 
+-- Reset to defaults button
+local resetRow = Instance.new("Frame")
+resetRow.Size = UDim2.new(1,-8,0,40); resetRow.BackgroundColor3 = theme.elevated; resetRow.BorderSizePixel = 0; resetRow.Parent = settingsTab
+Instance.new("UICorner", resetRow).CornerRadius = UDim.new(0, 8)
+local resetStroke = Instance.new("UIStroke", resetRow); resetStroke.Color = theme.border
+
+local resetBtn = Instance.new("TextButton")
+resetBtn.Size = UDim2.new(1,0,1,0); resetBtn.BackgroundTransparency = 1
+resetBtn.Font = Enum.Font.GothamSemibold; resetBtn.Text = "Reset to Defaults"
+resetBtn.TextColor3 = theme.red; resetBtn.TextSize = 13
+resetBtn.AutoButtonColor = false; resetBtn.Parent = resetRow
+
+dualConnect(resetBtn, function()
+    -- Reset ESP state
+    ESP.FillTransparency = 0.38; ESP.OutlineTransparency = 0.15
+    ESP.ShowNames = true; ESP.ShowHP = true; ESP.ShowDistance = true
+    ESP.IgnoreTeam = true; ESP.HoldToAim = false
+    ESP.LockSmooth = 0.7; ESP.FOVRadius = 200; ESP.ShowFOVCircle = false
+    ESP.HitboxMultiplier = 4.0; ESP.HitboxIgnoreTeam = true
+    -- Reset keybinds
+    Keybinds.ToggleMenu = Enum.KeyCode.Insert
+    Keybinds.AimLock = Enum.UserInputType.MouseButton2
+    -- Update FOV circle
+    updateFOVCircle()
+    -- Save defaults
+    if filesystemSupported then saveConfig() end
+    notify("All settings reset to defaults", theme.accent)
+end)
+
+resetBtn.MouseEnter:Connect(function()
+    TweenService:Create(resetRow, TWEEN_FAST, {BackgroundColor3 = theme.redDim}):Play()
+end)
+resetBtn.MouseLeave:Connect(function()
+    TweenService:Create(resetRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
+end)
+
 addSpacer(4, settingsTab)
 addSectionHeader("Info", settingsTab)
 addLabel("Config saves to executor's workspace folder", settingsTab)
@@ -1429,7 +1483,8 @@ end
 local isOpen = false
 
 local function openMenu()
-    if isOpen then return end; isOpen = true; main.Visible = true
+    if isOpen then return end; isOpen = true; isMinimized = false
+    minimizeBtn.Text = "-"; main.Visible = true
     main.BackgroundTransparency = 1
     main.Size = UDim2.new(0, curW*0.95, 0, curH*0.95)
     main.Position = UDim2.new(0.5, -curW*0.475, 0.5, -curH*0.475)
@@ -1450,6 +1505,32 @@ local function closeMenu()
     task.delay(0.25, function() if not isOpen then main.Visible = false end end)
 end
 
+local TITLE_BAR_H = 46
+
+local function minimizeMenu()
+    if not isOpen or isMinimized then return end
+    isMinimized = true
+    preMinimizeH = curH
+    minimizeBtn.Text = "+"
+    TweenService:Create(main, TWEEN_MED, {
+        Size = UDim2.new(0, curW, 0, TITLE_BAR_H)
+    }):Play()
+end
+
+local function restoreMenu()
+    if not isMinimized then return end
+    isMinimized = false
+    curH = preMinimizeH or WINDOW_H
+    minimizeBtn.Text = "-"
+    TweenService:Create(main, TWEEN_MED, {
+        Size = UDim2.new(0, curW, 0, curH)
+    }):Play()
+end
+
+dualConnect(minimizeBtn, function()
+    if isMinimized then restoreMenu() else minimizeMenu() end
+end)
+
 dualConnect(toggleBtn, function()
     if tbDidDrag then return end
     if isOpen then closeMenu() else openMenu() end
@@ -1463,12 +1544,12 @@ UserInput.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("SPECTRE ESP v2.2 loaded")
+print("SPECTRE ESP v2.3 loaded")
 print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v2.2 loaded", theme.accent)
+    notify("SPECTRE v2.3 loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
