@@ -1005,9 +1005,12 @@ end
 -- Head Expander (apply once per character, not every frame)
 -- ────────────────────────────────────────────────
 
-local origHeadSizes   = {}  -- [userId string] = original Vector3
-local origHeadCollide = {}  -- [userId string] = original CanCollide
-local appliedTo       = {}  -- [userId string] = true if already expanded
+local origHeadSizes        = {}  -- [userId string] = original Vector3
+local origHeadCollide      = {}  -- [userId string] = original CanCollide
+local origHeadTransparency = {}  -- [userId string] = original Transparency
+local origHeadMassless     = {}  -- [userId string] = original Massless
+local appliedTo            = {}  -- [userId string] = true if already expanded
+local playerConnections    = {}  -- [Player] = {connection, ...}
 
 local function expandHead(player)
     if not player.Character then return end
@@ -1015,8 +1018,10 @@ local function expandHead(player)
     if not head or not head:IsA("BasePart") then return end
     local key = tostring(player.UserId)
     if not origHeadSizes[key] then
-        origHeadSizes[key]   = head.Size
-        origHeadCollide[key] = head.CanCollide
+        origHeadSizes[key]        = head.Size
+        origHeadCollide[key]      = head.CanCollide
+        origHeadTransparency[key] = head.Transparency
+        origHeadMassless[key]     = head.Massless
     end
     head.Size         = origHeadSizes[key] * ESP.HitboxMultiplier
     head.Transparency = ESP.HitboxTransparency
@@ -1030,23 +1035,38 @@ local function restoreHead(player)
     if origHeadSizes[key] and player.Character then
         local head = player.Character:FindFirstChild("Head")
         if head and head:IsA("BasePart") then
+            local canCollide = origHeadCollide[key]
+            if canCollide == nil then canCollide = true end
             head.Size         = origHeadSizes[key]
-            head.Transparency = 0
-            head.CanCollide   = origHeadCollide[key] or true
-            head.Massless     = false
+            head.Transparency = origHeadTransparency[key] or 0
+            head.CanCollide   = canCollide
+            head.Massless     = origHeadMassless[key] or false
         end
     end
-    origHeadSizes[key]   = nil
-    origHeadCollide[key] = nil
-    appliedTo[key]       = nil
+    origHeadSizes[key]        = nil
+    origHeadCollide[key]      = nil
+    origHeadTransparency[key] = nil
+    origHeadMassless[key]     = nil
+    appliedTo[key]            = nil
+end
+
+local function shouldSkipHitbox(player)
+    return ESP.HitboxIgnoreTeam and LocalPlayer.Team and player.Team == LocalPlayer.Team
+end
+
+local function refreshHead(player)
+    if player == LocalPlayer then return end
+    if not player.Character then return end
+    if shouldSkipHitbox(player) then
+        restoreHead(player)
+        return
+    end
+    expandHead(player)
 end
 
 local function expandAllHeads()
     for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        if not player.Character then continue end
-        if ESP.HitboxIgnoreTeam and LocalPlayer.Team and player.Team == LocalPlayer.Team then continue end
-        expandHead(player)
+        refreshHead(player)
     end
 end
 
@@ -1054,9 +1074,11 @@ local function restoreAllHeads()
     for _, player in ipairs(Players:GetPlayers()) do
         restoreHead(player)
     end
-    origHeadSizes   = {}
-    origHeadCollide = {}
-    appliedTo       = {}
+    origHeadSizes        = {}
+    origHeadCollide      = {}
+    origHeadTransparency = {}
+    origHeadMassless     = {}
+    appliedTo            = {}
 end
 
 -- Slow re-check every 2 seconds (handles late joins, respawns game resets)
@@ -1065,18 +1087,23 @@ task.spawn(function()
     while task.wait(2) do
         if not ESP.HitboxExpanderEnabled then continue end
         for _, player in ipairs(Players:GetPlayers()) do
-            if player == LocalPlayer then continue end
-            if not player.Character then continue end
-            if ESP.HitboxIgnoreTeam and LocalPlayer.Team and player.Team == LocalPlayer.Team then continue end
-            expandHead(player)
+            refreshHead(player)
         end
     end
 end)
 
+LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
+    if ESP.HitboxExpanderEnabled then
+        expandAllHeads()
+    end
+end)
+
 Players.PlayerRemoving:Connect(function(p)
-    origHeadSizes[tostring(p.UserId)]   = nil
-    origHeadCollide[tostring(p.UserId)] = nil
-    appliedTo[tostring(p.UserId)]       = nil
+    origHeadSizes[tostring(p.UserId)]        = nil
+    origHeadCollide[tostring(p.UserId)]      = nil
+    origHeadTransparency[tostring(p.UserId)] = nil
+    origHeadMassless[tostring(p.UserId)]     = nil
+    appliedTo[tostring(p.UserId)]            = nil
     if playerConnections[p] then
         for _, conn in ipairs(playerConnections[p]) do conn:Disconnect() end
         playerConnections[p] = nil
@@ -1306,20 +1333,28 @@ end)
 -- Player hooks
 -- ────────────────────────────────────────────────
 
-local playerConnections = {} -- [Player] = {connection, ...}
-
 local function hookPlayer(plr)
     if plr == LocalPlayer then return end
+    if playerConnections[plr] then return end
+
+    local teamConn = plr:GetPropertyChangedSignal("Team"):Connect(function()
+        if ESP.HitboxExpanderEnabled then
+            refreshHead(plr)
+        end
+    end)
+
     local conn = plr.CharacterAdded:Connect(function(char)
-        origHeadSizes[tostring(plr.UserId)]   = nil
-        origHeadCollide[tostring(plr.UserId)] = nil
-        appliedTo[tostring(plr.UserId)]       = nil
+        origHeadSizes[tostring(plr.UserId)]        = nil
+        origHeadCollide[tostring(plr.UserId)]      = nil
+        origHeadTransparency[tostring(plr.UserId)] = nil
+        origHeadMassless[tostring(plr.UserId)]     = nil
+        appliedTo[tostring(plr.UserId)]            = nil
         if ESP.Enabled then task.wait(0.15); createHighlight(plr) end
         -- Watch for Head streaming in (for StreamingEnabled games)
         if ESP.HitboxExpanderEnabled then
             local head = char:FindFirstChild("Head")
             if head then
-                expandHead(plr)
+                refreshHead(plr)
             end
         end
         local descConn
@@ -1327,15 +1362,14 @@ local function hookPlayer(plr)
             if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
                 local key = tostring(plr.UserId)
                 if not appliedTo[key] then
-                    if ESP.HitboxIgnoreTeam and LocalPlayer.Team and plr.Team == LocalPlayer.Team then return end
-                    expandHead(plr)
+                    refreshHead(plr)
                 end
             end
         end)
         -- Store so we can disconnect later
         table.insert(playerConnections[plr], descConn)
     end)
-    playerConnections[plr] = {conn}
+    playerConnections[plr] = {conn, teamConn}
     -- Also hook existing character if already loaded
     if plr.Character then
         local char = plr.Character
@@ -1343,8 +1377,7 @@ local function hookPlayer(plr)
             if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
                 local key = tostring(plr.UserId)
                 if not appliedTo[key] then
-                    if ESP.HitboxIgnoreTeam and LocalPlayer.Team and plr.Team == LocalPlayer.Team then return end
-                    expandHead(plr)
+                    refreshHead(plr)
                 end
             end
         end)
