@@ -7,7 +7,15 @@ local GuiService     = game:GetService("GuiService")
 
 local Mouse  = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
-local guiInset = GuiService:GetGuiInset()
+
+local function getCurrentCamera()
+    Camera = workspace.CurrentCamera or Camera
+    return Camera
+end
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = workspace.CurrentCamera or Camera
+end)
 
 local sg = Instance.new("ScreenGui")
 sg.Name              = "SpectreESP"
@@ -128,6 +136,9 @@ local Keybinds = {
     AimLock = Enum.UserInputType.MouseButton2,
 }
 
+local ESP
+local configLoaded = false
+
 local function getKeyName(key)
     if typeof(key) == "EnumItem" then
         if key.EnumType == Enum.KeyCode then
@@ -140,6 +151,45 @@ local function getKeyName(key)
         end
     end
     return tostring(key)
+end
+
+local function getUserInputTypeByName(name)
+    local aliases = {
+        Mouse1 = "MouseButton1",
+        Mouse2 = "MouseButton2",
+        Mouse3 = "MouseButton3",
+    }
+    local ok, key = pcall(function()
+        return Enum.UserInputType[aliases[name] or name]
+    end)
+    if ok and key then return key end
+    return nil
+end
+
+local function getKeyCodeByName(name)
+    local ok, key = pcall(function()
+        return Enum.KeyCode[name]
+    end)
+    if ok and key then return key end
+    return nil
+end
+
+local function getInputByName(name, preferUserInput)
+    if preferUserInput then
+        return getUserInputTypeByName(name) or getKeyCodeByName(name)
+    end
+    return getKeyCodeByName(name) or getUserInputTypeByName(name)
+end
+
+local function inputMatches(input, bind)
+    if typeof(bind) ~= "EnumItem" then return false end
+    if bind.EnumType == Enum.UserInputType then
+        return input.UserInputType == bind
+    end
+    if bind.EnumType == Enum.KeyCode then
+        return input.KeyCode == bind
+    end
+    return false
 end
 
 -- ────────────────────────────────────────────────
@@ -221,13 +271,12 @@ local function loadConfig()
     if data.NoclipEnabled ~= nil then ESP.NoclipEnabled = data.NoclipEnabled end
     -- Keybinds
     if data.ToggleMenuKey then
-        local ok3, key = pcall(function() return Enum.KeyCode[data.ToggleMenuKey] end)
-        if ok3 and key then Keybinds.ToggleMenu = key end
+        local key = getInputByName(data.ToggleMenuKey, false)
+        if key then Keybinds.ToggleMenu = key end
     end
     if data.AimLockKey then
-        local ok3, key = pcall(function() return Enum.UserInputType[data.AimLockKey] end)
-        if not ok3 then ok3, key = pcall(function() return Enum.KeyCode[data.AimLockKey] end) end
-        if ok3 and key then Keybinds.AimLock = key end
+        local key = getInputByName(data.AimLockKey, true)
+        if key then Keybinds.AimLock = key end
     end
 
     return true
@@ -237,8 +286,7 @@ end
 local filesystemSupported = pcall(function() return writefile and readfile and makefolder and isfolder end)
     and type(writefile) == "function"
 
--- Load config early so ESP state is ready before UI is built
-local configLoaded = loadConfig()
+-- Config loads after ESP defaults are declared.
 
 -- Dual-connect helper: fires callback on both Activated and MouseButton1Click with debounce
 local function dualConnect(btn, callback)
@@ -881,7 +929,7 @@ end
 -- ESP State
 -- ────────────────────────────────────────────────
 
-local ESP = {
+ESP = {
     Enabled = false, objects = {},
     CursorLockEnabled = false, CursorLockedTarget = nil,
     IgnoreTeam = true, HoldToAim = false,
@@ -896,6 +944,8 @@ local ESP = {
     CrosshairColor = theme.accent, CrosshairGap = 4, CrosshairDot = false,
     CrosshairColorIndex = 5,
 }
+
+configLoaded = loadConfig()
 
 local function getTeamColor(p)
     if p.Team and p.Team.TeamColor then return p.Team.TeamColor.Color end
@@ -1157,6 +1207,11 @@ local crosshairColors = {
     {name = "Accent", color = theme.accent},
 }
 
+if not crosshairColors[ESP.CrosshairColorIndex] then
+    ESP.CrosshairColorIndex = 5
+end
+ESP.CrosshairColor = crosshairColors[ESP.CrosshairColorIndex].color
+
 local crosshairContainer = Instance.new("Frame")
 crosshairContainer.Size = UDim2.new(0, 0, 0, 0)
 crosshairContainer.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1223,14 +1278,18 @@ end
 
 local function trackTarget(part)
     if not part or not part.Parent then return end
-    local cf, pos = Camera.CFrame, Camera.CFrame.Position
+    local camera = getCurrentCamera()
+    if not camera then return end
+    local cf, pos = camera.CFrame, camera.CFrame.Position
     local dir = (part.Position - pos)
     if dir.Magnitude < 0.1 then return end
-    Camera.CFrame = cf:Lerp(CFrame.lookAt(pos, part.Position), ESP.LockSmooth)
+    camera.CFrame = cf:Lerp(CFrame.lookAt(pos, part.Position), ESP.LockSmooth)
 end
 
 local function findNearestPlayer()
-    local vp = Camera.ViewportSize
+    local camera = getCurrentCamera()
+    if not camera then return nil end
+    local vp = camera.ViewportSize
     local cx, cy = vp.X/2, vp.Y/2
     local best, bestD = nil, ESP.FOVRadius
     for _, p in Players:GetPlayers() do
@@ -1240,7 +1299,7 @@ local function findNearestPlayer()
             if root then
                 local hum = p.Character:FindFirstChildWhichIsA("Humanoid")
                 if hum and hum.Health > 0 then
-                    local sp = Camera:WorldToViewportPoint(root.Position)
+                    local sp = camera:WorldToViewportPoint(root.Position)
                     if sp.Z > 0 then
                         local d = math.sqrt((sp.X-cx)^2+(sp.Y-cy)^2)
                         if d < bestD then bestD = d; best = p end
@@ -1258,12 +1317,7 @@ local function findNearestPlayer()
 end
 
 local function isAimLockInput(input)
-    local bind = Keybinds.AimLock
-    if bind.EnumType == Enum.UserInputType then
-        return input.UserInputType == bind
-    else
-        return input.KeyCode == bind
-    end
+    return inputMatches(input, Keybinds.AimLock)
 end
 
 UserInput.InputBegan:Connect(function(input, gp)
@@ -1284,8 +1338,11 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 RunService.RenderStepped:Connect(function()
-    local vp = Camera.ViewportSize
-    local cx, cy = vp.X / 2, vp.Y / 2 - guiInset.Y
+    local camera = getCurrentCamera()
+    if not camera then return end
+    local vp = camera.ViewportSize
+    local inset = GuiService:GetGuiInset()
+    local cx, cy = vp.X / 2, vp.Y / 2 - inset.Y
     fovCircle.Position = UDim2.new(0, cx, 0, cy)
     fovCircle.Visible = ESP.ShowFOVCircle and ESP.CursorLockEnabled
     crosshairContainer.Position = UDim2.new(0, cx, 0, cy)
@@ -1359,10 +1416,15 @@ local function hookPlayer(plr)
         end
         local descConn
         descConn = char.DescendantAdded:Connect(function(desc)
-            if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
-                local key = tostring(plr.UserId)
-                if not appliedTo[key] then
-                    refreshHead(plr)
+            if desc.Name == "Head" and desc:IsA("BasePart") then
+                if ESP.Enabled and not ESP.objects[plr] then
+                    createHighlight(plr)
+                end
+                if ESP.HitboxExpanderEnabled then
+                    local key = tostring(plr.UserId)
+                    if not appliedTo[key] then
+                        refreshHead(plr)
+                    end
                 end
             end
         end)
@@ -1374,10 +1436,15 @@ local function hookPlayer(plr)
     if plr.Character then
         local char = plr.Character
         local descConn = char.DescendantAdded:Connect(function(desc)
-            if desc.Name == "Head" and desc:IsA("BasePart") and ESP.HitboxExpanderEnabled then
-                local key = tostring(plr.UserId)
-                if not appliedTo[key] then
-                    refreshHead(plr)
+            if desc.Name == "Head" and desc:IsA("BasePart") then
+                if ESP.Enabled and not ESP.objects[plr] then
+                    createHighlight(plr)
+                end
+                if ESP.HitboxExpanderEnabled then
+                    local key = tostring(plr.UserId)
+                    if not appliedTo[key] then
+                        refreshHead(plr)
+                    end
                 end
             end
         end)
@@ -1756,6 +1823,9 @@ local toggleMenuKeyBtn = addKeybindButton("Toggle Menu", "ToggleMenu", settingsT
 local aimLockKeyBtn = addKeybindButton("Aim Lock", "AimLock", settingsTab)
 
 local function syncUI()
+    espToggle:setState(ESP.Enabled)
+    aimToggle:setState(ESP.CursorLockEnabled)
+    hbToggle:setState(ESP.HitboxExpanderEnabled)
     nameToggle:setState(ESP.ShowNames)
     hpToggle:setState(ESP.ShowHP)
     distToggle:setState(ESP.ShowDistance)
@@ -1778,9 +1848,10 @@ local function syncUI()
     multiplierSlider:setValue(ESP.HitboxMultiplier)
     transparencySlider:setValue(ESP.HitboxTransparency)
     aimModeSelector:setSelected(ESP.HoldToAim and 2 or 1)
-    if crosshairColors[ESP.CrosshairColorIndex] then
-        ESP.CrosshairColor = crosshairColors[ESP.CrosshairColorIndex].color
+    if not crosshairColors[ESP.CrosshairColorIndex] then
+        ESP.CrosshairColorIndex = 5
     end
+    ESP.CrosshairColor = crosshairColors[ESP.CrosshairColorIndex].color
     crossColorSelector:setSelected(ESP.CrosshairColorIndex)
     toggleMenuKeyBtn.Text = getKeyName(Keybinds.ToggleMenu)
     aimLockKeyBtn.Text = getKeyName(Keybinds.AimLock)
@@ -1862,6 +1933,12 @@ resetBtn.AutoButtonColor = false; resetBtn.Parent = resetRow
 
 dualConnect(resetBtn, function()
     -- Reset ESP state
+    ESP.Enabled = false
+    ESP.CursorLockEnabled = false
+    ESP.CursorLockedTarget = nil
+    ESP.HitboxExpanderEnabled = false
+    removeAllHighlights()
+    restoreAllHeads()
     ESP.FillTransparency = 0.38; ESP.OutlineTransparency = 0.15
     ESP.ShowNames = true; ESP.ShowHP = true; ESP.ShowDistance = true
     ESP.IgnoreTeam = true; ESP.HoldToAim = false
@@ -1976,7 +2053,7 @@ dualConnect(closeBtn, closeMenu)
 
 UserInput.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Keybinds.ToggleMenu then
+    if inputMatches(input, Keybinds.ToggleMenu) then
         if isOpen then closeMenu() else openMenu() end
     end
 end)
