@@ -1,4 +1,4 @@
-# SPECTRE ESP v3.1
+# SPECTRE ESP v3.2
 
 A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua script with no external dependencies.
 
@@ -7,7 +7,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 ### ESP Highlights
 - Player highlights with team-color support
 - Toggleable name tags, health bars, and distance labels
-- Adjustable fill and outline opacity
+- Adjustable fill and outline transparency
 
 ### Aim Lock
 - Camera lock to nearest player within FOV
@@ -35,7 +35,7 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 
 ### Settings
 - **Keybind customization** — rebind toggle menu and aim lock to any key or mouse button
-- **Config save/load** — persists all settings, slider values, and keybinds between sessions
+- **Config save/load** — persists preferences, slider values, keybinds, and launcher layout between sessions
 - **Reset to defaults** — one-click restore of all settings
 - **Toast notifications** — on-screen popups when features are toggled or config is saved/loaded
 
@@ -46,8 +46,10 @@ A polished Roblox ESP toolkit with a dark, modern UI. Built as a single-file Lua
 - **Draggable window** — grab the title bar to reposition
 - **Resizable window** — drag the bottom-right grip handle (min 380x320, max 800x600)
 - **Minimize button** — collapse to title bar only, click again to restore
-- **Floating toggle button** — draggable "S" button to open/close the menu from anywhere
-- **Status indicators** — three dots on the toggle button show which features are active at a glance
+- **Floating toggle button** — draggable "S" button that defaults to the bottom-right, stays on-screen, and remembers its position when config saving is supported
+- **Launcher controls** — hide/show the floating button or move it back to the bottom-right from Settings; touch-only devices keep it visible
+- **Emergency access** — Insert always remains an emergency menu key after rebinding
+- **Status indicators** — four dots on the toggle button show which features are active at a glance
 - **Smooth animations** — open/close scale transitions, hover effects, toggle animations
 
 ## Keybinds

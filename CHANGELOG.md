@@ -1,5 +1,29 @@
 # Changelog
 
+## v3.2
+
+### Added
+- Launcher settings to show/hide the floating button and move it back to the bottom-right
+- Persistent floating-button position across sessions and resolution changes
+
+### Fixed
+- Floating button can no longer be dragged off-screen
+- Touch-only users cannot hide their only way to reopen the UI
+- Insert remains an emergency menu key when a custom keybind is unavailable
+- Capturing a keybind no longer triggers the menu or aim action being rebound
+- Config values are validated and clamped before use
+- The Save Config action now reports write failures instead of always showing success
+- ESP entries no longer remain stale if a character head is temporarily unavailable
+- Fill and outline controls are now correctly labeled as transparency
+
+### Improved
+- Consolidated repeated settings button code into one reusable component
+- Centralized the displayed version number
+- Config read and write support are detected independently
+- Home-screen hints now follow the current launcher state and keybinds
+
+---
+
 ## v3.1
 
 ### Added

@@ -5,8 +5,8 @@ local TweenService   = game:GetService("TweenService")
 local RunService     = game:GetService("RunService")
 local GuiService     = game:GetService("GuiService")
 
-local Mouse  = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
+local VERSION = "3.2"
 
 local function getCurrentCamera()
     Camera = workspace.CurrentCamera or Camera
@@ -131,13 +131,26 @@ end
 -- Keybind System
 -- ────────────────────────────────────────────────
 
+local EMERGENCY_TOGGLE_KEY = Enum.KeyCode.Insert
+
 local Keybinds = {
-    ToggleMenu = Enum.KeyCode.Insert,
+    ToggleMenu = EMERGENCY_TOGGLE_KEY,
     AimLock = Enum.UserInputType.MouseButton2,
 }
 
 local ESP
 local configLoaded = false
+local configReadable = false
+local configWritable = false
+local launcherVisibleToggle
+local updateHomeLabels
+local isRebinding = false
+
+local Launcher = {
+    Visible = true,
+    X = nil,
+    Y = nil,
+}
 
 local function getKeyName(key)
     if typeof(key) == "EnumItem" then
@@ -199,7 +212,30 @@ end
 local CONFIG_DIR = "SpectreESP"
 local CONFIG_FILE = CONFIG_DIR .. "/config.json"
 
+local function isFiniteNumber(value)
+    return type(value) == "number"
+        and value == value
+        and value ~= math.huge
+        and value ~= -math.huge
+end
+
+local function readConfigNumber(data, key, fallback, minimum, maximum)
+    local value = data[key]
+    if not isFiniteNumber(value) then return fallback end
+    return math.clamp(value, minimum, maximum)
+end
+
+local function readConfigBoolean(data, key, fallback)
+    local value = data[key]
+    if type(value) ~= "boolean" then return fallback end
+    return value
+end
+
 local function saveConfig()
+    if not configWritable then
+        return false, "executor filesystem is unavailable"
+    end
+
     local data = {
         -- ESP
         FillTransparency = ESP.FillTransparency,
@@ -230,51 +266,66 @@ local function saveConfig()
         -- Keybinds
         ToggleMenuKey = getKeyName(Keybinds.ToggleMenu),
         AimLockKey = getKeyName(Keybinds.AimLock),
+        -- Floating launcher
+        LauncherVisible = Launcher.Visible,
+        LauncherX = Launcher.X,
+        LauncherY = Launcher.Y,
     }
-    pcall(function()
+
+    local success, err = pcall(function()
         if not isfolder(CONFIG_DIR) then makefolder(CONFIG_DIR) end
         writefile(CONFIG_FILE, HttpService:JSONEncode(data))
     end)
+    return success, err
 end
 
 local function loadConfig()
+    if not configReadable then return false end
+
     local ok, raw = pcall(function() return readfile(CONFIG_FILE) end)
     if not ok or not raw then return false end
     local ok2, data = pcall(function() return HttpService:JSONDecode(raw) end)
     if not ok2 or type(data) ~= "table" then return false end
 
-    -- ESP
-    if data.FillTransparency ~= nil then ESP.FillTransparency = data.FillTransparency end
-    if data.OutlineTransparency ~= nil then ESP.OutlineTransparency = data.OutlineTransparency end
-    if data.ShowNames ~= nil then ESP.ShowNames = data.ShowNames end
-    if data.ShowHP ~= nil then ESP.ShowHP = data.ShowHP end
-    if data.ShowDistance ~= nil then ESP.ShowDistance = data.ShowDistance end
-    -- Aim Lock
-    if data.IgnoreTeam ~= nil then ESP.IgnoreTeam = data.IgnoreTeam end
-    if data.HoldToAim ~= nil then ESP.HoldToAim = data.HoldToAim end
-    if data.LockSmooth ~= nil then ESP.LockSmooth = data.LockSmooth end
-    if data.FOVRadius ~= nil then ESP.FOVRadius = data.FOVRadius end
-    if data.ShowFOVCircle ~= nil then ESP.ShowFOVCircle = data.ShowFOVCircle end
-    -- Crosshair
-    if data.CrosshairEnabled ~= nil then ESP.CrosshairEnabled = data.CrosshairEnabled end
-    if data.CrosshairSize ~= nil then ESP.CrosshairSize = data.CrosshairSize end
-    if data.CrosshairGap ~= nil then ESP.CrosshairGap = data.CrosshairGap end
-    if data.CrosshairThickness ~= nil then ESP.CrosshairThickness = data.CrosshairThickness end
-    if data.CrosshairDot ~= nil then ESP.CrosshairDot = data.CrosshairDot end
-    if data.CrosshairColorIndex ~= nil then ESP.CrosshairColorIndex = data.CrosshairColorIndex end
-    -- Hitbox
-    if data.HitboxMultiplier ~= nil then ESP.HitboxMultiplier = data.HitboxMultiplier end
-    if data.HitboxTransparency ~= nil then ESP.HitboxTransparency = data.HitboxTransparency end
-    if data.HitboxIgnoreTeam ~= nil then ESP.HitboxIgnoreTeam = data.HitboxIgnoreTeam end
-    if data.InfiniteJumpEnabled ~= nil then ESP.InfiniteJumpEnabled = data.InfiniteJumpEnabled end
-    if data.FullbrightEnabled ~= nil then ESP.FullbrightEnabled = data.FullbrightEnabled end
-    if data.NoclipEnabled ~= nil then ESP.NoclipEnabled = data.NoclipEnabled end
+    ESP.FillTransparency = readConfigNumber(data, "FillTransparency", ESP.FillTransparency, 0, 1)
+    ESP.OutlineTransparency = readConfigNumber(data, "OutlineTransparency", ESP.OutlineTransparency, 0, 1)
+    ESP.LockSmooth = readConfigNumber(data, "LockSmooth", ESP.LockSmooth, 0.05, 1)
+    ESP.FOVRadius = readConfigNumber(data, "FOVRadius", ESP.FOVRadius, 50, 500)
+    ESP.CrosshairSize = readConfigNumber(data, "CrosshairSize", ESP.CrosshairSize, 4, 30)
+    ESP.CrosshairGap = readConfigNumber(data, "CrosshairGap", ESP.CrosshairGap, 0, 20)
+    ESP.CrosshairThickness = readConfigNumber(data, "CrosshairThickness", ESP.CrosshairThickness, 1, 6)
+    ESP.HitboxMultiplier = readConfigNumber(data, "HitboxMultiplier", ESP.HitboxMultiplier, 1, 12)
+    ESP.HitboxTransparency = readConfigNumber(data, "HitboxTransparency", ESP.HitboxTransparency, 0, 1)
+
+    local colorIndex = readConfigNumber(data, "CrosshairColorIndex", ESP.CrosshairColorIndex, 1, 5)
+    ESP.CrosshairColorIndex = math.floor(colorIndex + 0.5)
+
+    local booleanFields = {
+        "ShowNames", "ShowHP", "ShowDistance", "IgnoreTeam", "HoldToAim",
+        "ShowFOVCircle", "CrosshairEnabled", "CrosshairDot", "HitboxIgnoreTeam",
+        "InfiniteJumpEnabled", "FullbrightEnabled", "NoclipEnabled",
+    }
+    for _, field in ipairs(booleanFields) do
+        ESP[field] = readConfigBoolean(data, field, ESP[field])
+    end
+
+    Launcher.Visible = readConfigBoolean(data, "LauncherVisible", Launcher.Visible)
+    local launcherX = readConfigNumber(data, "LauncherX", nil, 0, 1)
+    local launcherY = readConfigNumber(data, "LauncherY", nil, 0, 1)
+    if launcherX ~= nil and launcherY ~= nil then
+        Launcher.X = launcherX
+        Launcher.Y = launcherY
+    else
+        Launcher.X = nil
+        Launcher.Y = nil
+    end
+
     -- Keybinds
-    if data.ToggleMenuKey then
+    if type(data.ToggleMenuKey) == "string" then
         local key = getInputByName(data.ToggleMenuKey, false)
         if key then Keybinds.ToggleMenu = key end
     end
-    if data.AimLockKey then
+    if type(data.AimLockKey) == "string" then
         local key = getInputByName(data.AimLockKey, true)
         if key then Keybinds.AimLock = key end
     end
@@ -282,9 +333,11 @@ local function loadConfig()
     return true
 end
 
--- Check if executor supports file system
-local filesystemSupported = pcall(function() return writefile and readfile and makefolder and isfolder end)
-    and type(writefile) == "function"
+-- Detect read and write support independently so read-only configs can still load.
+configReadable = type(readfile) == "function"
+configWritable = type(writefile) == "function"
+    and type(makefolder) == "function"
+    and type(isfolder) == "function"
 
 -- Config loads after ESP defaults are declared.
 
@@ -292,7 +345,7 @@ local filesystemSupported = pcall(function() return writefile and readfile and m
 local function dualConnect(btn, callback)
     local debounce = false
     local function wrapped()
-        if debounce then return end
+        if debounce or isRebinding then return end
         debounce = true
         task.delay(0.1, function() debounce = false end)
         callback()
@@ -305,9 +358,26 @@ end
 -- Floating toggle button
 -- ────────────────────────────────────────────────
 
+local LAUNCHER_SIZE = 50
+local LAUNCHER_EDGE_MARGIN = 12
+local LAUNCHER_BOTTOM_EXTRA = 12
+local DEFAULT_LAUNCHER_X_OFFSET = -45
+local DEFAULT_LAUNCHER_Y_OFFSET = -55
+
+local launcherLayer = Instance.new("Frame")
+launcherLayer.Name = "LauncherLayer"
+launcherLayer.Size = UDim2.fromScale(1, 1)
+launcherLayer.BackgroundTransparency = 1
+launcherLayer.BorderSizePixel = 0
+launcherLayer.Active = false
+launcherLayer.ZIndex = 10
+launcherLayer.Parent = sg
+
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size             = UDim2.new(0, 50, 0, 50)
-toggleBtn.Position         = UDim2.new(1, -70, 1, -80)
+toggleBtn.Name             = "LauncherButton"
+toggleBtn.Size             = UDim2.fromOffset(LAUNCHER_SIZE, LAUNCHER_SIZE)
+toggleBtn.AnchorPoint      = Vector2.new(0.5, 0.5)
+toggleBtn.Position         = UDim2.new(1, DEFAULT_LAUNCHER_X_OFFSET, 1, DEFAULT_LAUNCHER_Y_OFFSET)
 toggleBtn.BackgroundColor3 = theme.surface
 toggleBtn.Text             = "S"
 toggleBtn.TextColor3       = theme.accent
@@ -315,7 +385,7 @@ toggleBtn.Font             = Enum.Font.GothamBlack
 toggleBtn.TextSize         = 22
 toggleBtn.AutoButtonColor  = false
 toggleBtn.ZIndex           = 10
-toggleBtn.Parent           = sg
+toggleBtn.Parent           = launcherLayer
 
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 16)
 
@@ -380,26 +450,122 @@ local function updateIndicators()
     end
 end
 
--- Draggable toggle button
-local tbDragging, tbDragStart, tbStartPos, tbDidDrag = false, nil, nil, false
+local function clampLauncherPixels(x, y)
+    local bounds = launcherLayer.AbsoluteSize
+    if bounds.X <= 0 or bounds.Y <= 0 then return x, y end
+
+    local half = LAUNCHER_SIZE / 2
+    local minX = half + LAUNCHER_EDGE_MARGIN
+    local maxX = bounds.X - half - LAUNCHER_EDGE_MARGIN
+    local minY = half + LAUNCHER_EDGE_MARGIN
+    local maxY = bounds.Y - half - LAUNCHER_EDGE_MARGIN - LAUNCHER_BOTTOM_EXTRA
+
+    if maxX < minX then
+        x = bounds.X / 2
+    else
+        x = math.clamp(x, minX, maxX)
+    end
+    if maxY < minY then
+        y = bounds.Y / 2
+    else
+        y = math.clamp(y, minY, maxY)
+    end
+    return x, y
+end
+
+local function setLauncherPixels(x, y, updatePreference)
+    local bounds = launcherLayer.AbsoluteSize
+    if bounds.X <= 0 or bounds.Y <= 0 then return end
+
+    x, y = clampLauncherPixels(x, y)
+    toggleBtn.Position = UDim2.fromOffset(x, y)
+
+    if updatePreference then
+        Launcher.X = math.clamp(x / bounds.X, 0, 1)
+        Launcher.Y = math.clamp(y / bounds.Y, 0, 1)
+    end
+end
+
+local function syncLauncher()
+    if not Launcher.Visible and not UserInput.KeyboardEnabled then
+        Launcher.Visible = true
+    end
+    if launcherVisibleToggle then
+        launcherVisibleToggle:setState(Launcher.Visible)
+    end
+    if updateHomeLabels then updateHomeLabels() end
+    toggleBtn.Visible = Launcher.Visible
+
+    task.defer(function()
+        local bounds = launcherLayer.AbsoluteSize
+        if bounds.X <= 0 or bounds.Y <= 0 then return end
+
+        local x, y
+        if Launcher.X ~= nil and Launcher.Y ~= nil then
+            x = Launcher.X * bounds.X
+            y = Launcher.Y * bounds.Y
+        else
+            x = bounds.X + DEFAULT_LAUNCHER_X_OFFSET
+            y = bounds.Y + DEFAULT_LAUNCHER_Y_OFFSET
+        end
+        setLauncherPixels(x, y, false)
+    end)
+end
+
+launcherLayer:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncLauncher)
+UserInput:GetPropertyChangedSignal("KeyboardEnabled"):Connect(syncLauncher)
+
+-- Draggable toggle button. Position is normalized so it survives resolution changes.
+local tbDragging, tbDragInput, tbDragStart, tbStartCenter, tbDidDrag = false, nil, nil, nil, false
 local TB_DRAG_THRESHOLD = 5
 
 toggleBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        tbDragging = true; tbDidDrag = false
-        tbDragStart = input.Position; tbStartPos = toggleBtn.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then tbDragging = false end
-        end)
+        local layerPosition = launcherLayer.AbsolutePosition
+        local buttonPosition = toggleBtn.AbsolutePosition
+        local buttonSize = toggleBtn.AbsoluteSize
+
+        tbDragging = true
+        tbDidDrag = false
+        tbDragInput = input
+        tbDragStart = input.Position
+        tbStartCenter = Vector2.new(
+            buttonPosition.X - layerPosition.X + buttonSize.X / 2,
+            buttonPosition.Y - layerPosition.Y + buttonSize.Y / 2
+        )
     end
 end)
 
 UserInput.InputChanged:Connect(function(input)
-    if tbDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local d = input.Position - tbDragStart
-        if math.abs(d.X) > TB_DRAG_THRESHOLD or math.abs(d.Y) > TB_DRAG_THRESHOLD then
-            tbDidDrag = true
-            toggleBtn.Position = UDim2.new(tbStartPos.X.Scale, tbStartPos.X.Offset + d.X, tbStartPos.Y.Scale, tbStartPos.Y.Offset + d.Y)
+    if not tbDragging or not tbDragInput then return end
+
+    local isMouseDrag = tbDragInput.UserInputType == Enum.UserInputType.MouseButton1
+        and input.UserInputType == Enum.UserInputType.MouseMovement
+    local isTouchDrag = tbDragInput.UserInputType == Enum.UserInputType.Touch
+        and input == tbDragInput
+    if not isMouseDrag and not isTouchDrag then return end
+
+    local delta = input.Position - tbDragStart
+    if math.abs(delta.X) > TB_DRAG_THRESHOLD or math.abs(delta.Y) > TB_DRAG_THRESHOLD then
+        tbDidDrag = true
+        setLauncherPixels(tbStartCenter.X + delta.X, tbStartCenter.Y + delta.Y, true)
+    end
+end)
+
+UserInput.InputEnded:Connect(function(input)
+    if not tbDragging or not tbDragInput then return end
+
+    local endedMouseDrag = tbDragInput.UserInputType == Enum.UserInputType.MouseButton1
+        and input.UserInputType == Enum.UserInputType.MouseButton1
+    local endedTouchDrag = input == tbDragInput
+    if not endedMouseDrag and not endedTouchDrag then return end
+
+    tbDragging = false
+    tbDragInput = nil
+    if tbDidDrag and configWritable then
+        local saved = saveConfig()
+        if not saved then
+            notify("Button moved, but its position could not be saved", theme.red)
         end
     end
 end)
@@ -470,7 +636,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left; subtitle.Parent = titleBar
 local ver = Instance.new("TextLabel")
 ver.Size = UDim2.new(0,42,0,20); ver.Position = UDim2.new(0,200,0.5,-10)
 ver.BackgroundColor3 = theme.elevated; ver.Font = Enum.Font.GothamBold
-ver.Text = "v3.1"; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
+ver.Text = "v" .. VERSION; ver.TextColor3 = theme.accent; ver.TextSize = 10; ver.Parent = titleBar
 Instance.new("UICorner", ver).CornerRadius = UDim.new(0, 6)
 local verStroke = Instance.new("UIStroke", ver)
 verStroke.Color = theme.border; verStroke.Thickness = 1; verStroke.Transparency = 0.5
@@ -728,11 +894,48 @@ local function addLabel(text, parent)
     l.Text = text; l.TextColor3 = theme.textDim; l.TextSize = 12
     l.TextXAlignment = Enum.TextXAlignment.Left; l.Parent = parent
     Instance.new("UIPadding", l).PaddingLeft = UDim.new(0, 6)
+    return l
 end
 
 local function addSpacer(h, parent)
     local s = Instance.new("Frame")
     s.Size = UDim2.new(1,0,0,h); s.BackgroundTransparency = 1; s.Parent = parent
+end
+
+local function addButton(text, textColor, parent, callback, hoverColor)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -8, 0, 40)
+    row.BackgroundColor3 = theme.elevated
+    row.BorderSizePixel = 0
+    row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+    local stroke = Instance.new("UIStroke", row)
+    stroke.Color = theme.border
+    stroke.Thickness = 1
+    stroke.Transparency = 0.3
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.fromScale(1, 1)
+    button.BackgroundTransparency = 1
+    button.Font = Enum.Font.GothamSemibold
+    button.Text = text
+    button.TextColor3 = textColor
+    button.TextSize = 13
+    button.AutoButtonColor = false
+    button.Parent = row
+
+    dualConnect(button, callback)
+
+    local hoverBackground = hoverColor or theme.elevated:Lerp(Color3.new(1, 1, 1), 0.04)
+    button.MouseEnter:Connect(function()
+        TweenService:Create(row, TWEEN_FAST, {BackgroundColor3 = hoverBackground}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(row, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
+    end)
+
+    return button
 end
 
 local function addToggle(text, parent)
@@ -946,6 +1149,7 @@ ESP = {
 }
 
 configLoaded = loadConfig()
+syncLauncher()
 
 local function getTeamColor(p)
     if p.Team and p.Team.TeamColor then return p.Team.TeamColor.Color end
@@ -960,6 +1164,7 @@ local function createHighlight(player)
     if ESP.objects[player] then
         pcall(function() ESP.objects[player].highlight:Destroy() end)
         pcall(function() ESP.objects[player].billboard:Destroy() end)
+        ESP.objects[player] = nil
     end
     if not player.Character then return end
     local char = player.Character
@@ -1321,6 +1526,7 @@ local function isAimLockInput(input)
 end
 
 UserInput.InputBegan:Connect(function(input, gp)
+    if isRebinding then return end
     if gp and input.UserInputType == Enum.UserInputType.MouseButton1 then return end
     if not ESP.CursorLockEnabled then return end
     if not isAimLockInput(input) then return end
@@ -1333,6 +1539,7 @@ UserInput.InputBegan:Connect(function(input, gp)
 end)
 
 UserInput.InputEnded:Connect(function(input)
+    if isRebinding then return end
     if not ESP.CursorLockEnabled or not ESP.HoldToAim then return end
     if isAimLockInput(input) then ESP.CursorLockedTarget = nil end
 end)
@@ -1483,17 +1690,33 @@ lt.Font = Enum.Font.GothamBlack; lt.Text = "SPECTRE"; lt.TextColor3 = theme.text
 
 local ls2 = Instance.new("TextLabel")
 ls2.Size = UDim2.new(1,0,0,16); ls2.Position = UDim2.new(0,0,0,52); ls2.BackgroundTransparency = 1
-ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v3.1"
+ls2.Font = Enum.Font.GothamSemibold; ls2.Text = "ESP  //  Educational Tool  //  v" .. VERSION
 ls2.TextColor3 = theme.textMuted; ls2.TextSize = 11; ls2.Parent = lf
 
 addSpacer(4, homeTab)
 addSectionHeader("Quick Start", homeTab)
-addLabel("Press INSERT or click S to toggle menu", homeTab)
+local quickStartLabel = addLabel("", homeTab)
 addLabel("Each feature has its own tab", homeTab)
 addSpacer(4, homeTab)
 addSectionHeader("Keybinds", homeTab)
-addLabel("INSERT — Toggle menu", homeTab)
-addLabel("Right-Click — Aim lock (toggle or hold)", homeTab)
+local homeToggleBindLabel = addLabel("", homeTab)
+local homeAimBindLabel = addLabel("", homeTab)
+
+updateHomeLabels = function()
+    local toggleName = getKeyName(Keybinds.ToggleMenu)
+    local aimName = getKeyName(Keybinds.AimLock)
+    if Launcher.Visible then
+        quickStartLabel.Text = "Press " .. toggleName .. " or click S to toggle menu"
+    elseif Keybinds.ToggleMenu == EMERGENCY_TOGGLE_KEY then
+        quickStartLabel.Text = "Press Insert to toggle menu"
+    else
+        quickStartLabel.Text = "Press " .. toggleName .. " or Insert to toggle menu"
+    end
+    homeToggleBindLabel.Text = toggleName .. "  -  Toggle menu"
+    homeAimBindLabel.Text = aimName .. "  -  Aim lock (toggle or hold)"
+end
+
+updateHomeLabels()
 
 -- ────────────────────────────────────────────────
 -- Tab: ESP
@@ -1523,8 +1746,8 @@ distToggle:setState(true); distToggle:onChanged(function(on) ESP.ShowDistance = 
 
 addSpacer(2, espTab)
 addSectionHeader("Appearance", espTab)
-local fillSlider = addSlider("Fill Opacity", 0, 1, 0.38, espTab, function(v) ESP.FillTransparency = v end)
-local outlineSlider = addSlider("Outline Opacity", 0, 1, 0.15, espTab, function(v) ESP.OutlineTransparency = v end)
+local fillSlider = addSlider("Fill Transparency", 0, 1, 0.38, espTab, function(v) ESP.FillTransparency = v end)
+local outlineSlider = addSlider("Outline Transparency", 0, 1, 0.15, espTab, function(v) ESP.OutlineTransparency = v end)
 addSpacer(2, espTab)
 addLabel("Uses team colors automatically", espTab)
 
@@ -1747,7 +1970,42 @@ addLabel("Settings are saved with your config", crossTab)
 
 local settingsTab = createTab("Settings", "=")
 addSectionHeader("About", settingsTab)
-addLabel("SPECTRE ESP v3.1", settingsTab)
+addLabel("SPECTRE ESP v" .. VERSION, settingsTab)
+
+addSpacer(4, settingsTab)
+addSectionHeader("Launcher", settingsTab)
+
+launcherVisibleToggle = addToggle("Show Floating Button", settingsTab)
+launcherVisibleToggle:setState(Launcher.Visible)
+launcherVisibleToggle:onChanged(function(on)
+    if not on and not UserInput.KeyboardEnabled then
+        launcherVisibleToggle:setState(true)
+        notify("The button is required when no keyboard is available", theme.red)
+        return
+    end
+
+    Launcher.Visible = on
+    syncLauncher()
+    local saved = not configWritable or saveConfig()
+    local message = on and "Floating button shown" or "Floating button hidden"
+    if configWritable and not saved then message = message .. " (save failed)" end
+    notify(message, saved and (on and theme.toggleOn or theme.textDim) or theme.red)
+end)
+
+addLabel("Drag the S button anywhere", settingsTab)
+addLabel("Config saving remembers its position", settingsTab)
+addLabel("Press Insert to recover it while hidden", settingsTab)
+
+addButton("Move Button to Bottom Right", theme.accent, settingsTab, function()
+    Launcher.X = nil
+    Launcher.Y = nil
+    syncLauncher()
+    local saved = not configWritable or saveConfig()
+    notify(
+        saved and "Floating button moved to bottom right" or "Button moved, but its position could not be saved",
+        saved and theme.accent or theme.red
+    )
+end)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Keybinds", settingsTab)
@@ -1779,18 +2037,42 @@ local function addKeybindButton(text, bindName, parent)
     local listening = false
     local listenConn = nil
 
+    local function stopListening(input)
+        listening = false
+        if listenConn then listenConn:Disconnect(); listenConn = nil end
+
+        local function clearRebindMode()
+            -- Allow release-driven UI callbacks to run while they are still suppressed.
+            task.delay(0.05, function() isRebinding = false end)
+        end
+
+        if input.UserInputState == Enum.UserInputState.End then
+            clearRebindMode()
+            return
+        end
+
+        local releaseConn
+        releaseConn = input.Changed:Connect(function()
+            if input.UserInputState ~= Enum.UserInputState.End then return end
+            releaseConn:Disconnect()
+            releaseConn = nil
+            clearRebindMode()
+        end)
+    end
+
     dualConnect(keyBtn, function()
-        if listening then return end
+        if listening or isRebinding then return end
         listening = true
+        isRebinding = true
+        ESP.CursorLockedTarget = nil
         keyBtn.Text = "..."
         keyBtn.TextColor3 = theme.red
 
         task.defer(function() listenConn = UserInput.InputBegan:Connect(function(input, gp)
             if input.KeyCode == Enum.KeyCode.Escape then
-                listening = false
                 keyBtn.Text = getKeyName(Keybinds[bindName])
                 keyBtn.TextColor3 = theme.accent
-                if listenConn then listenConn:Disconnect(); listenConn = nil end
+                stopListening(input)
                 return
             end
             if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -1802,16 +2084,15 @@ local function addKeybindButton(text, bindName, parent)
                 Keybinds[bindName] = input.UserInputType
                 keyBtn.Text = getKeyName(input.UserInputType)
             else
-                listening = false
                 keyBtn.Text = getKeyName(Keybinds[bindName])
                 keyBtn.TextColor3 = theme.accent
-                if listenConn then listenConn:Disconnect(); listenConn = nil end
+                stopListening(input)
                 return
             end
-            listening = false
             keyBtn.TextColor3 = theme.accent
-            if listenConn then listenConn:Disconnect(); listenConn = nil end
-            saveConfig()
+            stopListening(input)
+            if configWritable then saveConfig() end
+            updateHomeLabels()
             notify(text .. " set to " .. getKeyName(Keybinds[bindName]), theme.accent)
         end) end)
     end)
@@ -1823,6 +2104,8 @@ local toggleMenuKeyBtn = addKeybindButton("Toggle Menu", "ToggleMenu", settingsT
 local aimLockKeyBtn = addKeybindButton("Aim Lock", "AimLock", settingsTab)
 
 local function syncUI()
+    launcherVisibleToggle:setState(Launcher.Visible)
+    syncLauncher()
     espToggle:setState(ESP.Enabled)
     aimToggle:setState(ESP.CursorLockEnabled)
     hbToggle:setState(ESP.HitboxExpanderEnabled)
@@ -1863,47 +2146,20 @@ end
 addSpacer(4, settingsTab)
 addSectionHeader("Config", settingsTab)
 
--- Save button
-local saveRow = Instance.new("Frame")
-saveRow.Size = UDim2.new(1,-8,0,40); saveRow.BackgroundColor3 = theme.elevated; saveRow.BorderSizePixel = 0; saveRow.Parent = settingsTab
-Instance.new("UICorner", saveRow).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", saveRow).Color = theme.border
-
-local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(1,0,1,0); saveBtn.BackgroundTransparency = 1
-saveBtn.Font = Enum.Font.GothamSemibold; saveBtn.Text = "Save Config"
-saveBtn.TextColor3 = theme.toggleOn; saveBtn.TextSize = 13
-saveBtn.AutoButtonColor = false; saveBtn.Parent = saveRow
-
-dualConnect(saveBtn, function()
-    if not filesystemSupported then
+addButton("Save Config", theme.toggleOn, settingsTab, function()
+    if not configWritable then
         notify("Executor doesn't support saving", theme.red)
         return
     end
-    saveConfig()
-    notify("Config saved", theme.toggleOn)
+    local saved = saveConfig()
+    notify(saved and "Config saved" or "Config save failed", saved and theme.toggleOn or theme.red)
 end)
 
-saveBtn.MouseEnter:Connect(function()
-    TweenService:Create(saveRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated:Lerp(Color3.new(1,1,1), 0.04)}):Play()
-end)
-saveBtn.MouseLeave:Connect(function()
-    TweenService:Create(saveRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
-end)
-
--- Load button
-local loadRow = Instance.new("Frame")
-loadRow.Size = UDim2.new(1,-8,0,40); loadRow.BackgroundColor3 = theme.elevated; loadRow.BorderSizePixel = 0; loadRow.Parent = settingsTab
-Instance.new("UICorner", loadRow).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", loadRow).Color = theme.border
-
-local loadBtn = Instance.new("TextButton")
-loadBtn.Size = UDim2.new(1,0,1,0); loadBtn.BackgroundTransparency = 1
-loadBtn.Font = Enum.Font.GothamSemibold; loadBtn.Text = "Load Config"
-loadBtn.TextColor3 = theme.accent; loadBtn.TextSize = 13
-loadBtn.AutoButtonColor = false; loadBtn.Parent = loadRow
-
-dualConnect(loadBtn, function()
+addButton("Load Config", theme.accent, settingsTab, function()
+    if not configReadable then
+        notify("Executor doesn't support loading", theme.red)
+        return
+    end
     if loadConfig() then
         syncUI()
         notify("Config loaded", theme.toggleOn)
@@ -1912,26 +2168,7 @@ dualConnect(loadBtn, function()
     end
 end)
 
-loadBtn.MouseEnter:Connect(function()
-    TweenService:Create(loadRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated:Lerp(Color3.new(1,1,1), 0.04)}):Play()
-end)
-loadBtn.MouseLeave:Connect(function()
-    TweenService:Create(loadRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
-end)
-
--- Reset to defaults button
-local resetRow = Instance.new("Frame")
-resetRow.Size = UDim2.new(1,-8,0,40); resetRow.BackgroundColor3 = theme.elevated; resetRow.BorderSizePixel = 0; resetRow.Parent = settingsTab
-Instance.new("UICorner", resetRow).CornerRadius = UDim.new(0, 8)
-local resetStroke = Instance.new("UIStroke", resetRow); resetStroke.Color = theme.border
-
-local resetBtn = Instance.new("TextButton")
-resetBtn.Size = UDim2.new(1,0,1,0); resetBtn.BackgroundTransparency = 1
-resetBtn.Font = Enum.Font.GothamSemibold; resetBtn.Text = "Reset to Defaults"
-resetBtn.TextColor3 = theme.red; resetBtn.TextSize = 13
-resetBtn.AutoButtonColor = false; resetBtn.Parent = resetRow
-
-dualConnect(resetBtn, function()
+addButton("Reset to Defaults", theme.red, settingsTab, function()
     -- Reset ESP state
     ESP.Enabled = false
     ESP.CursorLockEnabled = false
@@ -1948,21 +2185,21 @@ dualConnect(resetBtn, function()
     ESP.CrosshairEnabled = false; ESP.CrosshairSize = 12; ESP.CrosshairGap = 4; ESP.CrosshairThickness = 2
     ESP.CrosshairDot = false; ESP.CrosshairColorIndex = 5; ESP.CrosshairColor = theme.accent
     -- Reset keybinds
-    Keybinds.ToggleMenu = Enum.KeyCode.Insert
+    Keybinds.ToggleMenu = EMERGENCY_TOGGLE_KEY
     Keybinds.AimLock = Enum.UserInputType.MouseButton2
+    -- Reset launcher
+    Launcher.Visible = true
+    Launcher.X = nil
+    Launcher.Y = nil
     -- Sync UI to match reset state
     syncUI()
     -- Save defaults
-    if filesystemSupported then saveConfig() end
-    notify("All settings reset to defaults", theme.accent)
-end)
-
-resetBtn.MouseEnter:Connect(function()
-    TweenService:Create(resetRow, TWEEN_FAST, {BackgroundColor3 = theme.redDim}):Play()
-end)
-resetBtn.MouseLeave:Connect(function()
-    TweenService:Create(resetRow, TWEEN_FAST, {BackgroundColor3 = theme.elevated}):Play()
-end)
+    local saved = not configWritable or saveConfig()
+    notify(
+        saved and "All settings reset to defaults" or "Defaults restored, but config save failed",
+        saved and theme.accent or theme.red
+    )
+end, theme.redDim)
 
 addSpacer(4, settingsTab)
 addSectionHeader("Info", settingsTab)
@@ -2052,24 +2289,30 @@ end)
 dualConnect(closeBtn, closeMenu)
 
 UserInput.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if inputMatches(input, Keybinds.ToggleMenu) then
-        if isOpen then closeMenu() else openMenu() end
-    end
+    if isRebinding then return end
+    local isEmergencyKey = input.KeyCode == EMERGENCY_TOGGLE_KEY
+    local isConfiguredKey = inputMatches(input, Keybinds.ToggleMenu)
+    if not isEmergencyKey and not isConfiguredKey then return end
+    if UserInput:GetFocusedTextBox() then return end
+    if gp and not isEmergencyKey then return end
+    if isOpen then closeMenu() else openMenu() end
 end)
 
-print("SPECTRE ESP v3.1 loaded")
-print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. " or S button")
+print("SPECTRE ESP v" .. VERSION .. " loaded")
+print("→ Open with " .. getKeyName(Keybinds.ToggleMenu) .. (Launcher.Visible and " or S button" or " (floating button hidden)"))
 
 task.defer(function()
     task.wait(0.5)
-    notify("SPECTRE v3.1 loaded", theme.accent)
+    notify("SPECTRE v" .. VERSION .. " loaded", theme.accent)
     if configLoaded then
         task.wait(0.3)
         notify("Config loaded", theme.toggleOn)
-    elseif filesystemSupported then
+    elseif configReadable then
         task.wait(0.3)
         notify("No config found — using defaults", theme.textDim)
+    elseif configWritable then
+        task.wait(0.3)
+        notify("Executor can't load configs", theme.red)
     else
         task.wait(0.3)
         notify("Executor doesn't support saving configs", theme.red)
